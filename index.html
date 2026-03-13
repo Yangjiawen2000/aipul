@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pulse 2025 | 前沿视界</title>
+    <meta name="description" content="每日 AI 界的最新进展与深度解析">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="blob-container">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <nav class="glass-nav">
+        <div class="nav-content">
+            <div class="logo">
+                <span class="logo-text">AI 脉动</span>
+                <span class="logo-year">2025</span>
+            </div>
+            <div class="nav-actions">
+                <div class="nav-date" id="current-date">2026.03.13</div>
+                <button id="settings-toggle" class="icon-btn">⚙️</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Settings Pane -->
+    <div id="settings-pane" class="settings-pane">
+        <h3>API 设置</h3>
+        <p>输入你的 Kimi API Key 以启用实时动态</p>
+        <input type="password" id="kimi-api-key" placeholder="输入 Kimi API Key">
+        <button id="save-settings" class="btn-small">保存并刷新</button>
+    </div>
+
+    <main class="container">
+        <header class="hero-section" id="hero-section">
+            <div class="glass-card hero-card">
+                <div class="tag">今日焦点</div>
+                <h1 id="hero-title">加载中...</h1>
+                <p id="hero-summary" class="hero-desc">正在通过 AI 引擎汇总今日最前沿的技术突破与行业动态。</p>
+                <div class="hero-footer">
+                    <span class="read-time">阅读时间: 3 min</span>
+                    <button id="hero-link" class="btn-primary">深入了解</button>
+                </div>
+            </div>
+        </header>
+
+        <section class="trends-grid" id="trends-grid">
+            <!-- Cards will be injected by JS -->
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 AI Pulse Assistant. Created for Frontier Insights.</p>
+    </footer>
+
+    <!-- Detail Preview Modal -->
+    <div id="detail-modal" class="modal-overlay">
+        <div class="glass-card modal-content">
+            <button id="close-modal" class="close-btn">&times;</button>
+            <div class="modal-header">
+                <span id="modal-category" class="category"></span>
+                <span id="modal-impact" class="impact-tag"></span>
+            </div>
+            <h2 id="modal-title"></h2>
+            <div id="modal-body" class="modal-body-text"></div>
+            <div class="modal-footer">
+                <div class="priority-box">
+                    <span class="label">热度指数</span>
+                    <span id="modal-priority" class="value"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
