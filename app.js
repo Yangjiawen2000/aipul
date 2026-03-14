@@ -408,8 +408,10 @@ function cleanCrawledContent(html) {
 
 // Helper to map Chinese impact to CSS classes
 function getImpactClass(impact) {
-    if (impact.includes('核心') || impact.includes('Critical')) return 'critical';
-    if (impact.includes('重大') || impact.includes('High')) return 'high';
+    if (!impact) return 'medium';
+    const str = String(impact);
+    if (str.includes('核心') || str.includes('Critical')) return 'critical';
+    if (str.includes('重大') || str.includes('High')) return 'high';
     return 'medium';
 }
 

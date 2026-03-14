@@ -32,6 +32,13 @@ export default async function handler(req, res) {
     2. 基于搜索到的事实，整理成一份 6 条最高热度的动态 JSON。
     3. 直接返回结果，不要任何开场白或解释。
     
+    JSON 格式要求：
+    {
+      "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
+      "trends": [
+        { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
+      ]
+    }
     分类限选：[大模型, 机器人, 算力芯片, 多模态, 智驾, 安全治理, 其他]`;
 
     let messages = [
@@ -120,14 +127,27 @@ export default async function handler(req, res) {
         if (jsonMatch) {
             let freshData = JSON.parse(jsonMatch[0]);
 
-            // Normalize Data Structure (Repair if Agentic Kimi missed a key)
+            // Heuristic Normalization: Find the main array regardless of key name
             if (!freshData.trends || !Array.isArray(freshData.trends)) {
-                console.warn('Backend Normalization: Repairing missing trends array.');
-                freshData.trends = freshData.trends || freshData.updates || freshData.news || [];
-                if (!Array.isArray(freshData.trends) && typeof freshData.trends === 'object') {
-                    freshData.trends = Object.values(freshData.trends);
-                }
+                console.warn('Backend Normalization: Heuristically searching for content array.');
+                const firstArray = Object.values(freshData).find(val => Array.isArray(val));
+                freshData.trends = firstArray || [];
             }
+
+            // Defensive Item Normalization
+            freshData.trends = freshData.trends.map((item, idx) => {
+                // Handle if trends is an array of strings or unexpected types
+                const base = (typeof item === 'object' && item !== null) ? item : {};
+                return {
+                    title: base.title || base.news_title || `AI Pulse Update #${idx + 1}`,
+                    summary: base.summary || base.description || base.content || "详细内容请查看原文。",
+                    category: base.category || "其他",
+                    impact: base.impact || "中等",
+                    priority: base.priority || 70,
+                    url: base.url || base.link || "#",
+                    time: base.time || "Just Now"
+                };
+            });
 
             if (!freshData.hero) {
                 console.warn('Backend Normalization: Repairing missing hero object.');

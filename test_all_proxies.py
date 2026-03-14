@@ -82,7 +82,7 @@ def test_news_proxy():
             })
             
             # Step 2: Synthesis (USING FASTER MODEL)
-            print("[Turn 2] Synthesis (USING moonshot-v1-8k for speed)...")
+            print("[Turn 2] Synthesis (USING moonshot-v1-32k for speed)...")
             start_time = time.time()
             resp2 = requests.post(BASE_URL, headers={"Authorization": f"Bearer {API_KEY}"}, json={
                 "model": "moonshot-v1-32k",
@@ -91,12 +91,39 @@ def test_news_proxy():
             })
             end_time = time.time()
             
-            result2 = resp2.json()
             if resp2.status_code == 200:
                 print(f"✅ Synthesis Success! (Time: {end_time - start_time:.2f}s)")
+                result2 = resp2.json()
                 final_content = result2['choices'][0]['message']['content']
-                print("Final JSON Header:", final_content[:50] + "...")
+                data = json.loads(final_content)
+                trends = data.get('trends')
+                if not isinstance(trends, list):
+                    # Heuristic search
+                    for val in data.values():
+                        if isinstance(val, list):
+                            trends = val
+                            break
+                
+                if not trends:
+                    trends = []
+                    print(f"⚠️ Warning: Still no trends found. Available keys: {list(data.keys())}")
+                
+                # Normalize items
+                normalized = []
+                for idx, item in enumerate(trends):
+                    base = item if isinstance(item, dict) else {}
+                    normalized.append({
+                        "title": base.get("title") or f"Update #{idx}",
+                        "impact": base.get("impact", "中等"),
+                        "category": base.get("category", "其他")
+                    })
+                
+                print(f"Items found (after heuristic normalization): {len(normalized)}")
+                if len(normalized) > 0:
+                    first = normalized[0]
+                    print(f"Final Schema Check: title={bool(first['title'])}, impact='{first['impact']}', category='{first['category']}'")
             else:
+                result2 = resp2.json()
                 print(f"❌ Step 2 Failed: {result2}")
         else:
             print("ℹ️ Direct answer (no tools used).")
