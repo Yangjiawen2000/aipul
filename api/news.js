@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
     try {
         // Step 1: Request Kimi to decide if a tool is needed
-        let response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        let response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
             }
 
             // Step 3: Get final synthesis using JSON Mode
-            response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+            response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
