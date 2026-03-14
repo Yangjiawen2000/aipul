@@ -40,28 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkApiConnectivity();
     animateOnScroll();
     initChat();
-    
-    // Disable right-click for a more native "app" feel
-    document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    // Modal Close logic
-    const closeModalBtn = document.getElementById('close-modal');
-    const modalOverlay = document.getElementById('detail-modal');
-    
-    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-    if (modalOverlay) modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) closeModal();
-    });
-
-    // Refresh Button logic
-    const refreshBtn = document.getElementById('refresh-data');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            refreshBtn.classList.add('refresh-btn-anim');
-            fetchNewsFromKimi(null, true); // Manual refresh triggers force update
-            setTimeout(() => refreshBtn.classList.remove('refresh-btn-anim'), 800);
-        });
-    }
+    setupInfiniteScroll();
+    startLiveClock();
 
     // Category Filter logic
     const filterBtns = document.querySelectorAll('.filter-btn');
@@ -192,13 +172,21 @@ function addChatMessage(role, content, id = null) {
     container.scrollTop = container.scrollHeight;
 }
 
-// Update Current Date
-function updateDate() {
-    const now = new Date();
-    const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-    const dateStr = now.toLocaleDateString('zh-CN', options).replace(/\//g, '.');
-    
-    document.getElementById('current-date').textContent = dateStr;
+// Real-time Cyber Clock
+function startLiveClock() {
+    const clockEl = document.getElementById('current-date');
+    if (!clockEl) return;
+
+    function updateClock() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        clockEl.textContent = `${hours}:${minutes}:${seconds}`;
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
 }
 
 // Render Hero Section
@@ -268,11 +256,11 @@ function createTrendCard(item, index, instant = false) {
 }
 
 // Render Trends Grid with Skeleton & Filter Support
-function renderTrends(isLoading = false, filterCategory = 'all', instant = false) {
+function renderTrends(isLoading = false, filterCategory = 'all', instant = false, isAppend = false) {
     const grid = document.getElementById('trends-grid');
     if (!grid) return;
     
-    if (isLoading) {
+    if (isLoading && !isAppend) {
         grid.innerHTML = '';
         for (let i = 0; i < 9; i++) {
             const skeleton = document.createElement('div');
@@ -302,16 +290,25 @@ function renderTrends(isLoading = false, filterCategory = 'all', instant = false
     
     const sortedTrends = filteredTrends.sort((a, b) => b.priority - a.priority);
     
-    if (sortedTrends.length === 0) {
+    if (sortedTrends.length === 0 && !isAppend) {
         grid.innerHTML = '<p class="no-results">该分类下暂无最新动态</p>';
         return;
     }
+
+    if (isAppend) {
+        // Find items that are not already in the DOM to avoid duplication
+        const currentTitles = new Set([...grid.querySelectorAll('.trend-title')].map(el => el.textContent));
+        const itemsToAppend = sortedTrends.filter(item => !currentTitles.has(item.title));
+        
+        itemsToAppend.forEach((item, index) => {
+            grid.appendChild(createTrendCard(item, index, false));
+        });
+        return;
+    }
+
     if (instant) {
         grid.innerHTML = '';
-        sortedTrends.forEach((item, index) => {
-            const card = createTrendCard(item, index, true);
-            grid.appendChild(card);
-        });
+        sortedTrends.forEach((item, index) => grid.appendChild(createTrendCard(item, index, true)));
         return;
     }
 
@@ -319,10 +316,7 @@ function renderTrends(isLoading = false, filterCategory = 'all', instant = false
     grid.style.opacity = '0';
     setTimeout(() => {
         grid.innerHTML = '';
-        sortedTrends.forEach((item, index) => {
-            const card = createTrendCard(item, index, false);
-            grid.appendChild(card);
-        });
+        sortedTrends.forEach((item, index) => grid.appendChild(createTrendCard(item, index, false)));
         grid.style.opacity = '1';
     }, 400);
 }
@@ -439,83 +433,70 @@ function getImpactClass(impact) {
 }
 
 // Kimi API Integration (Now via Backend Proxy)
-async function fetchNewsFromKimi(apiKey, force = false) {
-    console.log('AI Analyst is working...');
+async function fetchNewsFromKimi(apiKey, force = false, isAppend = false) {
     
-    // Only show skeletons if we have NO data at all
     const hasData = AI_NEWS_DATA && AI_NEWS_DATA.trends && AI_NEWS_DATA.trends.length > 0;
     
-    if (!hasData || force) {
+    if (!isAppend && (!hasData || force)) {
         renderHero(true);
         renderTrends(true);
-    } else {
-        // Show a subtle sync status instead of blocking skeletons
+    } else if (!isAppend) {
         const statusText = document.querySelector('.status-text');
         if (statusText) statusText.textContent = '🔄 正在同步云端最新资讯...';
     }
 
     try {
         const url = force ? `/api/news?force=true&t=${Date.now()}` : `/api/news?t=${Date.now()}`;
-        console.log(`Using Backend Proxy (${force ? 'Force Refresh' : 'Standard Fetch'})...`);
-        
         const response = await fetch(url);
         const dataSource = response.headers.get('x-data-source') || 'Unknown';
         const freshData = await response.json();
 
-        if (!response.ok) {
-            console.error('❌ AI Fetch Logic Error:', freshData);
-            throw new Error(freshData.error || 'Fetch Failed');
-        }
+        if (!response.ok) throw new Error(freshData.error || 'Fetch Failed');
 
-        console.log(`📊 Data Source: ${dataSource}`);
-        updateWidgetData(freshData, dataSource);
+        updateWidgetData(freshData, dataSource, isAppend);
 
-        if (freshData) {
+        if (freshData && !isAppend) {
             localStorage.setItem('ai_pulse_cache', JSON.stringify(freshData));
-            console.log('💾 Saved fresh data to LocalStorage.');
         }
     } catch (error) {
         console.error('Data Fetch Error:', error);
-        updateWidgetData(null, 'Error');
+        if (!isAppend) updateWidgetData(null, 'Error');
     }
 }
 
-function updateWidgetData(data, source = 'AI-Discovery') {
+function updateWidgetData(data, source = 'AI-Discovery', isAppend = false) {
     const statusText = document.querySelector('.status-text');
     
     if (!data) {
-        // Fallback to minimal data and show error status
-        if (statusText) statusText.textContent = `系统状态: 数据获取延迟`;
-        renderHero();
-        renderTrends();
+        if (!isAppend && statusText) {
+            statusText.textContent = `系统状态: 数据获取延迟`;
+        }
         return;
     }
 
-    // Update global reference if used
-    if (typeof AI_NEWS_DATA !== 'undefined') {
+    // Update global reference
+    if (isAppend) {
+        // Append unique items only
+        const existingTitles = new Set(AI_NEWS_DATA.trends.map(t => t.title));
+        const newItems = (data.trends || []).filter(item => !existingTitles.has(item.title));
+        AI_NEWS_DATA.trends = [...AI_NEWS_DATA.trends, ...newItems];
+        renderTrends(false, 'all', false, true); // Append render
+    } else {
         AI_NEWS_DATA = data;
-    }
-    
-    // Update live status text to show source
-    if (statusText) {
-            if (source.includes('Cache') || source.includes('KV')) {
-                statusText.innerHTML = `数据源: <span style="color: #4cd964">● 容器缓存 (Redis)</span>`;
-            } else if (source.includes('Discovery') || source.includes('Kimi')) {
-                statusText.innerHTML = `数据源: <span style="color: #ffcc00">● AI 实时全网发现</span>`;
-            } else {
-                statusText.textContent = `数据源: ${source}`;
-            }
+        renderHero(false, data.hero);
+        renderTrends(false, 'all');
     }
 
-    // Save to LocalStorage for next time
-    localStorage.setItem('ai_pulse_cache', JSON.stringify(data));
-    console.log('💾 Saved fresh data to LocalStorage.');
-    
-    // Re-render UI
-    renderTrends();
-    updateDate();
-    
-    console.log('Pulse data updated at:', new Date().toLocaleTimeString());
+    // Update live status text to show source
+    if (statusText) {
+        if (source.includes('Cache') || source.includes('KV')) {
+            statusText.innerHTML = `数据源: <span style="color: #4cd964">● 容器缓存 (Redis)</span>`;
+        } else if (source.includes('Discovery') || source.includes('Kimi')) {
+            statusText.innerHTML = `数据源: <span style="color: #ffcc00">● AI 实时全网发现</span>`;
+        } else {
+            statusText.textContent = `数据源: ${source}`;
+        }
+    }
 }
 
 function closeModal() {
@@ -526,7 +507,65 @@ function closeModal() {
     }, 300);
 }
 
-// Simple Intersection Observer for scroll animations
+// UI Overhaul Helpers
+function startLiveClock() {
+    const clockEl = document.getElementById('current-date');
+    if (!clockEl) return;
+    function tick() {
+        const now = new Date();
+        const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+        clockEl.textContent = now.toLocaleTimeString('zh-CN', options);
+    }
+    tick();
+    setInterval(tick, 1000);
+}
+
+// Infinite Scroll Logic
+let isFetchingMore = false;
+function setupInfiniteScroll() {
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && !isFetchingMore) {
+            sentinel.classList.add('visible');
+            loadMoreNews();
+        }
+    }, { threshold: 0.1 });
+
+    observer.observe(sentinel);
+}
+
+async function loadMoreNews() {
+    if (isFetchingMore) return;
+    isFetchingMore = true;
+    
+    // Fetch 6 new items (force true to bypass cache for "new" feeling)
+    await fetchNewsFromKimi(null, true, true);
+    
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (sentinel) sentinel.classList.remove('visible');
+    isFetchingMore = false;
+}
+
+// Real-time clock update
+function updateClock() {
+    const now = new Date();
+    const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    const timeString = now.toLocaleTimeString('zh-CN', options);
+    const dateString = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    const clockElement = document.getElementById('real-time-clock');
+    if (clockElement) {
+        clockElement.textContent = `${dateString} ${timeString}`;
+    }
+}
+
+// Initial call and set interval for clock
+setInterval(updateClock, 1000);
+updateClock(); // Call immediately to avoid delay
+
+// Intersection Observer for scroll animations
 function animateOnScroll() {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {

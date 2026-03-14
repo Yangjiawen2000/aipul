@@ -957,6 +957,98 @@ body.widget-mode .modal-body-text {
 .btn-small:hover {
     transform: scale(1.02);
 }
+
+.nav-date {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--primary);
+    text-shadow: 0 0 10px rgba(76, 217, 100, 0.5);
+    letter-spacing: 0.05em;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 100px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.nav-date:hover {
+    color: #fff;
+    text-shadow: 0 0 20px var(--primary);
+    transform: scale(1.05);
+}
+
+.scroll-sentinel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+    width: 100%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.scroll-sentinel.visible {
+    opacity: 1;
+}
+
+.scroll-sentinel p {
+    margin-top: 15px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+}
+
+/* Loading Ripple Animation */
+.loading-ripple {
+    display: inline-block;
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+.loading-ripple div {
+    position: absolute;
+    border: 4px solid var(--primary);
+    opacity: 1;
+    border-radius: 50%;
+    animation: loading-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+.loading-ripple div:nth-child(2) {
+    animation-delay: -0.5s;
+}
+@keyframes loading-ripple {
+    0% {
+        top: 36px;
+        left: 36px;
+        width: 0;
+        height: 0;
+        opacity: 0;
+    }
+    4.9% {
+        top: 36px;
+        left: 36px;
+        width: 0;
+        height: 0;
+        opacity: 0;
+    }
+    5% {
+        top: 36px;
+        left: 36px;
+        width: 0;
+        height: 0;
+        opacity: 1;
+    }
+    100% {
+        top: 0px;
+        left: 0px;
+        width: 72px;
+        height: 72px;
+        opacity: 0;
+    }
+}
 /* Loading Skeleton States */
 .skeleton-loading .trend-title,
 .skeleton-loading .trend-summary,
