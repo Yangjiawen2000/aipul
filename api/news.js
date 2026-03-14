@@ -73,8 +73,9 @@ export default async function handler(req, res) {
                 messages: messages,
                 tools: tools,
                 tool_choice: "auto",
-                thinking: { enabled: false } // Disable thinking for Vercel Hobby (Speed > Depth)
-            })
+                thinking: { enabled: false }
+            }),
+            cache: 'no-store'
         });
 
         let result = await response.json();
@@ -117,7 +118,7 @@ export default async function handler(req, res) {
             // Add a final explicit instruction for synthesis
             messages.push({
                 role: "user", 
-                content: "基于上述搜索结果，立即生成包含 6 条详细动态的最终 JSON 报告。确保每个条目都有真实的 summary 和 url。按热度排序。"
+                content: "### CRITICAL JSON REQUIREMENT ###\n基于结果生成最终 JSON。\n必须使用 'hero' 和 'trends' 键。\n'trends' 必须是对象数组，包含 title, summary, url(真实链接), category, impact, priority, time。\n严禁返回纯字符串数组！立即执行。"
             });
 
             // Step 3: Get final synthesis using JSON Mode
@@ -130,8 +131,9 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     model: "moonshot-v1-32k",
                     messages: messages,
-                    response_format: { type: "json_object" } // Enable JSON Mode
-                })
+                    response_format: { type: "json_object" }
+                }),
+                cache: 'no-store'
             });
             result = await response.json();
 
