@@ -49,8 +49,10 @@ export default async function handler(req, res) {
         res.setHeader('x-debug-cache', `ERROR-${cacheErr.message.slice(0, 20)}`);
     }
 
-    const systemPrompt = `顶级AI主理人。调取web_search深度搜索2026年3月全球（硅谷、中国、欧洲）AI动态。
-    必须覆盖不同领域：[大模型更新, 机器人进阶, 算力硬件, 政策治理, 开源社区]。
+    const seed = req.query.seed || 'none';
+    const systemPrompt = `顶级AI主理人。调取web_search深度搜索2026年3月全球AI动态。
+    当前搜索种子：${seed} (若非none，请避开最常见的头条，发掘更多细分领域的深度动态)。
+    必须覆盖不同领域：[大模型, 机器人, 算力硬件, 政策, 开源, 生物计算, 能源AI]。
     仅输出JSON：
     {
       "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
@@ -62,7 +64,7 @@ export default async function handler(req, res) {
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `深度搜索并整理 6 条覆盖全球多元领域的 AI 行业动态。必须中文。 (ID:${Date.now()})` }
+        { role: "user", content: `深度搜索 6 条独特的全球 AI 动态。种子项: ${seed}。必须中文。 (ID:${Date.now()})` }
     ];
 
     try {

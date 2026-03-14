@@ -312,13 +312,9 @@ function renderTrends(isLoading = false, filterCategory = 'all', instant = false
         return;
     }
 
-    // Smooth transition for non-instant renders
-    grid.style.opacity = '0';
-    setTimeout(() => {
-        grid.innerHTML = '';
-        sortedTrends.forEach((item, index) => grid.appendChild(createTrendCard(item, index, false)));
-        grid.style.opacity = '1';
-    }, 400);
+    // Direct render: individual card animations (CSS card-entry) handle the reveal
+    grid.innerHTML = '';
+    sortedTrends.forEach((item, index) => grid.appendChild(createTrendCard(item, index, false)));
 }
 
 // Modal Logic
@@ -446,7 +442,8 @@ async function fetchNewsFromKimi(apiKey, force = false, isAppend = false) {
     }
 
     try {
-        const url = force ? `/api/news?force=true&t=${Date.now()}` : `/api/news?t=${Date.now()}`;
+        const seed = isAppend ? Math.floor(Math.random() * 1000) : 0;
+        const url = force ? `/api/news?force=true&seed=${seed}&t=${Date.now()}` : `/api/news?t=${Date.now()}`;
         const response = await fetch(url);
         const dataSource = response.headers.get('x-data-source') || 'Unknown';
         const freshData = await response.json();
