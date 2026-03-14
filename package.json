@@ -1,0 +1,10 @@
+{
+  "name": "ai-pulse-2025",
+  "version": "1.0.0",
+  "description": "AI Pulse 2025 Web App",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

@@ -77,14 +77,16 @@ async function checkApiConnectivity() {
     try {
         const response = await fetch('/api/news', { method: 'HEAD' });
         if (response.ok) {
+            console.log('✅ Connectivity Check Success: Backend is reachable.');
             statusEl.textContent = '☁️ 云端同步';
             statusEl.className = 'connectivity-status cloud';
             fetchNewsFromKimi(); // Load real data
         } else {
+            console.error('❌ Connectivity Check Failed: Backend returned error status', response.status);
             throw new Error('Backend unreachable');
         }
     } catch (error) {
-        console.warn('Backend proxy not found. Running in Local Mode.');
+        console.warn('⚠️ Connectivity Check Error:', error.message);
         statusEl.textContent = '🏠 本地模式 (模拟数据)';
         statusEl.className = 'connectivity-status local';
         // Fallback to mock data
@@ -372,6 +374,7 @@ async function fetchNewsFromKimi(apiKey) {
         const result = await response.json();
         
         if (!response.ok) {
+            console.error('❌ AI Fetch Logic Error:', result);
             throw new Error(result.error || 'Fetch Failed');
         }
 

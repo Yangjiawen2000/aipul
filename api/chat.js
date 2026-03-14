@@ -1,9 +1,12 @@
 // Vercel Serverless Function: Backend Proxy for Kimi Chat
 // Handles AI Q&A interactions securely.
 
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-
 export default async function handler(req, res) {
+    // Handle connectivity check
+    if (req.method === 'HEAD') {
+        return res.status(200).end();
+    }
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: "Method Not Allowed" });
     }

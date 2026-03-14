@@ -1,14 +1,17 @@
 // Vercel Serverless Function: Backend Proxy for Kimi API
 // This protects your API Key and provides basic rate limiting.
 
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-
 // Simple In-memory Cache for Rate Limiting & Performance (per-instance)
 let cachedData = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
 export default async function handler(req, res) {
+    // 0. Connectivity check: return 200 for HEAD or simple GET
+    if (req.method === 'HEAD') {
+        return res.status(200).end();
+    }
+
     // 1. Basic Rate Limiting / Caching
     const now = Date.now();
     if (cachedData && (now - lastFetchTime < CACHE_DURATION)) {
