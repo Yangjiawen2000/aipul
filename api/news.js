@@ -181,7 +181,7 @@ export default async function handler(req, res) {
             
             // 6. Async Update Cache
             try {
-                await kv.set(CACHE_KEY, freshData, { ex: 3600 }); // Cache for 1 hour
+                await kv.set(CACHE_KEY, freshData, { ex: 86400 }); // Cache for 24 hours
                 console.log('[API/NEWS] Cloud Cache Updated');
             } catch (cacheErr) {
                 console.warn('[API/NEWS] Cache Write Error:', cacheErr.message);
