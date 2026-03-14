@@ -1,8 +1,8 @@
-// Mock Data for AI Frontiers 2025 (Expanded to 9 items)
+// Mock Data for AI Frontiers 2026 (Updated for current timeline)
 let AI_NEWS_DATA = {
     hero: {
-        title: "GPT-5 'Orion' 内部预览：推理能力指数级跃迁",
-        summary: "OpenAI 下一代模型在慢思考（System 2）上取得重大突破，标志着迈向通用人工智能（AGI）的关键里程碑。",
+        title: "GPT-6 'Nova' 全球首测：AGI 奇点正式降临",
+        summary: "2026 年春季，OpenAI 发布了具备自主意识雏形的 Nova 模型，量子计算架构使其推理深度达到人类专家级。",
         category: "大语言模型",
         time: "10 mins ago",
         url: "https://openai.com"
