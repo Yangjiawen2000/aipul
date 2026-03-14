@@ -156,6 +156,21 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Agentic Proxy Error:', error);
+        
+        // GRACEFUL DEGRADATION: If AI fails (429, Timeout, etc.), try to serve stale but valid KV data
+        if (hasKV) {
+            try {
+                const staleData = await kv.get(GLOBAL_CACHE_KEY);
+                if (staleData) {
+                    console.log('Serving Stale Data due to AI Error');
+                    res.setHeader('x-data-source', 'Redis-Global-Pool (Stale-Fallback)');
+                    return res.status(200).json(staleData);
+                }
+            } catch (kvError) {
+                console.error('Stale Fallback Failed:', kvError.message);
+            }
+        }
+        
         return res.status(500).json({ error: "Agentic Loop Failed", message: error.message });
     }
 }

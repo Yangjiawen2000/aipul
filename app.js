@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
             refreshBtn.classList.add('refresh-btn-anim');
-            fetchNewsFromKimi(); // Call without key to use backend proxy
+            fetchNewsFromKimi(null, true); // Manual refresh triggers force update
             setTimeout(() => refreshBtn.classList.remove('refresh-btn-anim'), 800);
         });
     }
@@ -414,7 +414,7 @@ function getImpactClass(impact) {
 }
 
 // Kimi API Integration (Now via Backend Proxy)
-async function fetchNewsFromKimi(apiKey) {
+async function fetchNewsFromKimi(apiKey, force = false) {
     console.log('AI Analyst is working...');
     
     // Show Loading state
@@ -426,8 +426,9 @@ async function fetchNewsFromKimi(apiKey) {
         
         // If no apiKey is provided via parameter, try the public proxy endpoint
         if (!apiKey) {
-            console.log('Using Backend Proxy (Force Refresh)...');
-            response = await fetch('/api/news?force=true');
+            const url = force ? '/api/news?force=true' : '/api/news';
+            console.log(`Using Backend Proxy (${force ? 'Force Refresh' : 'Standard Fetch'})...`);
+            response = await fetch(url);
         } else {
             // Original Direct Mode (for local debugging or private use)
             console.log('Using Direct Key Mode...');
