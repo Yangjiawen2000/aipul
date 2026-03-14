@@ -2,16 +2,16 @@
 import { kv } from '@vercel/kv';
 
 const GLOBAL_CACHE_KEY = 'ai_pulse_data_pool_v2'; // Bump version for 2026/Agentic
-const CACHE_DURATION = 60 * 60 * 1000; 
+const CACHE_DURATION = 60 * 60 * 1000;
 
 // 1. Tool Definition for Kimi (Using Native $web_search)
 const tools = [
-  {
-    type: "builtin_function",
-    function: {
-      name: "$web_search"
+    {
+        type: "builtin_function",
+        function: {
+            name: "$web_search"
+        }
     }
-  }
 ];
 
 // 2. Note: Custom Skill implementation replaced by Kimi Native Search
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
     const forceRefresh = req.query.force === 'true';
     const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
-    
+
     // 3. Cache Check
     if (hasKV && !forceRefresh) {
         try {
@@ -56,22 +56,23 @@ export default async function handler(req, res) {
 
     try {
         // Step 1: Request Kimi to decide if a tool is needed
-        let response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+        let response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "kimi-k2.5", 
+                model: "kimi-k2.5",
                 messages: messages,
                 tools: tools,
-                tool_choice: "auto"
+                tool_choice: "auto",
+                thinking: { enabled: true } // Enable thinking to get reasoning_content
             })
         });
 
         let result = await response.json();
-        
+
         if (!response.ok) {
             console.error('Kimi API Step 1 Error:', result);
             return res.status(response.status).json({ error: "Moonshot API Step 1 Failed", details: result });
@@ -82,14 +83,16 @@ export default async function handler(req, res) {
         // Step 2: Handle Native Tool Calls (Multi-turn Agent)
         if (message.tool_calls) {
             // CRITICAL: Preserve reasoning_content for k2.5 stability
+            // We must include the reasoning_content provided by the model in the previous turn.
             const assistantMessage = {
                 role: "assistant",
                 content: message.content || null,
                 tool_calls: message.tool_calls,
                 reasoning_content: message.reasoning_content || undefined
             };
-            messages.push(assistantMessage); 
-            
+            // Note: If reasoning_content exists, it must be exactly as returned.
+            messages.push(assistantMessage);
+
             for (const toolCall of message.tool_calls) {
                 if (toolCall.function.name === "$web_search") {
                     // For builtin $web_search, content must be the original arguments string
@@ -97,13 +100,13 @@ export default async function handler(req, res) {
                         role: "tool",
                         tool_call_id: toolCall.id,
                         name: "$web_search",
-                        content: toolCall.function.arguments 
+                        content: toolCall.function.arguments
                     });
                 }
             }
 
             // Step 3: Get final synthesis using JSON Mode
-            response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+            response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -112,7 +115,8 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     model: "kimi-k2.5",
                     messages: messages,
-                    response_format: { type: "json_object" } // Enable JSON Mode
+                    response_format: { type: "json_object" }, // Enable JSON Mode
+                    thinking: { enabled: true } // Keep thinking enabled for consistency
                 })
             });
             result = await response.json();
@@ -125,10 +129,10 @@ export default async function handler(req, res) {
 
         const finalContent = result.choices[0].message.content;
         const jsonMatch = finalContent.match(/\{[\s\S]*\}/);
-        
+
         if (jsonMatch) {
             let freshData = JSON.parse(jsonMatch[0]);
-            
+
             // Normalize Data Structure (Repair if Agentic Kimi missed a key)
             if (!freshData.trends || !Array.isArray(freshData.trends)) {
                 console.warn('Backend Normalization: Repairing missing trends array.');
@@ -137,7 +141,7 @@ export default async function handler(req, res) {
                     freshData.trends = Object.values(freshData.trends);
                 }
             }
-            
+
             if (!freshData.hero) {
                 console.warn('Backend Normalization: Repairing missing hero object.');
                 freshData.hero = freshData.trends[0] || { title: "AI Pulse 2026", summary: "极智先锋，领航未来。", category: "智驾", time: "Just Now", url: "#" };
@@ -145,17 +149,17 @@ export default async function handler(req, res) {
 
             // Ensure we have exactly 9 trends for the grid layout (if possible)
             if (freshData.trends.length < 9 && freshData.trends.length > 0) {
-                while(freshData.trends.length < 9) {
-                    freshData.trends.push({...freshData.trends[0], id: Math.random()});
+                while (freshData.trends.length < 9) {
+                    freshData.trends.push({ ...freshData.trends[0], id: Math.random() });
                 }
             }
-            
+
             // 5. Update Global Pool
             if (hasKV) {
                 await kv.set(GLOBAL_CACHE_KEY, freshData);
                 await kv.set(GLOBAL_CACHE_KEY + '_time', Date.now());
             }
-            
+
             res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
             return res.status(200).json(freshData);
         }
@@ -163,7 +167,7 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Agentic Proxy Error:', error);
-        
+
         // GRACEFUL DEGRADATION: If AI fails (429, Timeout, etc.), try to serve stale but valid KV data
         if (hasKV) {
             try {
@@ -177,7 +181,7 @@ export default async function handler(req, res) {
                 console.error('Stale Fallback Failed:', kvError.message);
             }
         }
-        
+
         return res.status(500).json({ error: "Agentic Loop Failed", message: error.message });
     }
 }
