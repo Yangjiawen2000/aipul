@@ -425,8 +425,8 @@ async function fetchNewsFromKimi(apiKey) {
         
         // If no apiKey is provided via parameter, try the public proxy endpoint
         if (!apiKey) {
-            console.log('Using Backend Proxy...');
-            response = await fetch('/api/news');
+            console.log('Using Backend Proxy (Force Refresh)...');
+            response = await fetch('/api/news?force=true');
         } else {
             // Original Direct Mode (for local debugging or private use)
             console.log('Using Direct Key Mode...');

@@ -14,14 +14,15 @@ export default async function handler(req, res) {
 
     // 1. Global Content Pool (Redis / Vercel KV)
     let cachedData = null;
+    const forceRefresh = req.query.force === 'true';
     
-    // DEBUG: Log available ENV keys (SAFE: No values logged)
+    // DEBUG: Log available ENV keys
     console.log('Available Env Keys:', Object.keys(process.env).filter(k => k.includes('KV') || k.includes('REDIS') || k.includes('KIMI')));
 
-    // Only attempt KV if the environment variables are configured
+    // Only attempt KV if configured and not forcing a refresh
     const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
     
-    if (hasKV) {
+    if (hasKV && !forceRefresh) {
         try {
             cachedData = await kv.get(GLOBAL_CACHE_KEY);
             const lastUpdate = await kv.get(GLOBAL_CACHE_KEY + '_time');
@@ -49,21 +50,21 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Server Configuration Error: Missing API Key" });
     }
 
-    const systemPrompt = `你是一个拥有全球视野的自主 AI 行业分析师。
-    你的任务是实时扫描并分析此刻全球最受关注的 AI 技术突破与行业大趋势。
+    const systemPrompt = `你是一个拥有全球视野的顶级 AI 行业分析师。
+    你的任务是搜索并分析此时此刻全球最真实、最前沿的 AI 技术突破与行业动态。
     
-    要求：
-    1. 必须反映“当前即时”的热度。
-    2. 按照“技术影响力 (Impact)”和“社会关注度 (Heat)”综合排序，最高的放在 hero (头条)。
-    3. 严格输出 9 条不同的趋势动态。
-    4. 简介必须极其干练且富有洞察力 (20-30字)。
-    5. **分类 (category) 必须且只能从以下列表中选择一个：[大模型, 机器人, 算力芯片, 多模态, 智驾, 安全治理, 其他]**
+    关键要求：
+    1. **真实性**：严禁虚构。所有资讯必须基于 2024-2025 年真实的行业新闻。
+    2. **真实链接 (URL)**：url 字段必须是**真实存在的权威科技媒体链接**（如 TechCrunch, The Verge, 36Kr, IT之家, OpenAI Blog 等）。**严禁使用 example.com 或占位符链接。**
+    3. **即时热度**：按照技术影响力和社会关注度排序，最震撼的放在 hero 处。
+    4. **数量**：严格输出 9 条不同的动态。
+    5. **分类 (category)**：必须从 [大模型, 机器人, 算力芯片, 多模态, 智驾, 安全治理, 其他] 中选择。
     
     输出格式 (JSON ONLY):
     {
-      "hero": { "title": "标题", "summary": "简介", "category": "分类", "time": "Just Now", "url": "链接" },
+      "hero": { "title": "标题", "summary": "简介", "category": "分类", "time": "Just Now", "url": "真实新闻链接" },
       "trends": [
-        { "id": 1, "category": "分类", "title": "标题", "summary": "简介", "impact": "核心突破/重大影响/显著进步", "priority": 1-10, "url": "链接" }
+        { "id": 1, "category": "分类", "title": "标题", "summary": "简介", "impact": "核心突破/重大影响/显著进步", "priority": 1-10, "url": "真实新闻链接" }
       ]
     }`;
 
