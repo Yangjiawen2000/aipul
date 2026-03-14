@@ -22,7 +22,20 @@ const AI_NEWS_DATA = {
 
 // Initialize the Dashboard
 document.addEventListener('DOMContentLoaded', () => {
-    updateDate();
+    // 1. Initial Load: Check LocalStorage for instant display
+    const cachedData = localStorage.getItem('ai_pulse_cache');
+    if (cachedData) {
+        console.log('🚀 Loading from LocalStorage Cache...');
+        try {
+            AI_NEWS_DATA = JSON.parse(cachedData);
+            renderHero();
+            renderTrends();
+        } catch (e) {
+            console.error('Local cache corrupted');
+        }
+    }
+
+    // 2. Connectivity check -> Triggers selective backend fetch
     checkApiConnectivity();
     animateOnScroll();
     initChat();
@@ -449,8 +462,11 @@ async function fetchNewsFromKimi(apiKey) {
 
 function updateWidgetData(newData) {
     // Update global object
-    AI_NEWS_DATA.hero = newData.hero;
-    AI_NEWS_DATA.trends = newData.trends;
+    AI_NEWS_DATA = newData;
+
+    // Save to LocalStorage for next time
+    localStorage.setItem('ai_pulse_cache', JSON.stringify(newData));
+    console.log('💾 Saved fresh data to LocalStorage.');
     
     // Re-render UI
     renderHero();

@@ -14,6 +14,10 @@ export default async function handler(req, res) {
 
     // 1. Global Content Pool (Redis / Vercel KV)
     let cachedData = null;
+    
+    // DEBUG: Log available ENV keys (SAFE: No values logged)
+    console.log('Available Env Keys:', Object.keys(process.env).filter(k => k.includes('KV') || k.includes('REDIS') || k.includes('KIMI')));
+
     // Only attempt KV if the environment variables are configured
     const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
     
