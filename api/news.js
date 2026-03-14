@@ -81,7 +81,14 @@ export default async function handler(req, res) {
 
         // Step 2: Handle Native Tool Calls (Multi-turn Agent)
         if (message.tool_calls) {
-            messages.push(message); 
+            // CRITICAL: Preserve reasoning_content for k2.5 stability
+            const assistantMessage = {
+                role: "assistant",
+                content: message.content || null,
+                tool_calls: message.tool_calls,
+                reasoning_content: message.reasoning_content || undefined
+            };
+            messages.push(assistantMessage); 
             
             for (const toolCall of message.tool_calls) {
                 if (toolCall.function.name === "$web_search") {
