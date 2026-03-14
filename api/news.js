@@ -44,20 +44,19 @@ export default async function handler(req, res) {
         // Continue to fresh fetch
     }
 
-    const systemPrompt = `你是一个顶级 AI 行业主理人。调取 web_search 搜索 2026年3月 AI 动态。
-    基于搜索结果，筛选 6 条最具热度和影响力的动态，按热度降序排列。
-    必须直接输出如下 JSON 格式：
+    const systemPrompt = `Top AI Analyst. Use web_search for Mar 2026 facts.
+    Output JSON ONLY:
     {
       "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
       "trends": [
         { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
       ]
     }
-    分类限选：[大模型, 机器人, 算力芯片, 多模态, 智驾, 安全治理, 其他]`;
+    Limit to 4 high-impact items. No preamble.`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `[RequestID: ${Date.now()}] 必须调用 web_search 搜索 2026年3月 AI 动态。返回包含 6 条详细动态的 JSON。` }
+        { role: "user", content: `Search & synthesis 4 AI trends for Mar 2026. (ID:${Date.now()})` }
     ];
 
     try {
@@ -115,10 +114,10 @@ export default async function handler(req, res) {
                 }
             }
 
-            // Add a final explicit instruction for synthesis
+            // Minimalist synthesis instruction
             messages.push({
                 role: "user", 
-                content: "### CRITICAL JSON REQUIREMENT ###\n基于结果生成最终 JSON。\n必须使用 'hero' 和 'trends' 键。\n'trends' 必须是对象数组，包含 title, summary, url(真实链接), category, impact, priority, time。\n严禁返回纯字符串数组！立即执行。"
+                content: "Final JSON (hero+4 trends). Real details. Sort by heat."
             });
 
             // Step 3: Get final synthesis using JSON Mode
@@ -131,6 +130,7 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     model: "moonshot-v1-32k",
                     messages: messages,
+                    temperature: 0,
                     response_format: { type: "json_object" }
                 }),
                 cache: 'no-store'
