@@ -67,7 +67,8 @@ export default async function handler(req, res) {
                 messages: messages,
                 tools: tools,
                 tool_choice: "auto",
-                thinking: { enabled: true } // Enable thinking to get reasoning_content
+                thinking: { enabled: true }, // Enable thinking to get reasoning_content
+                temperature: 1
             })
         });
 
@@ -116,7 +117,8 @@ export default async function handler(req, res) {
                     model: "kimi-k2.5",
                     messages: messages,
                     response_format: { type: "json_object" }, // Enable JSON Mode
-                    thinking: { enabled: true } // Keep thinking enabled for consistency
+                    thinking: { enabled: true }, // Keep thinking enabled for consistency
+                    temperature: 1
                 })
             });
             result = await response.json();

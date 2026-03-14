@@ -40,7 +40,7 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 model: "kimi-k2.5",
                 messages: messages,
-                temperature: 0.7
+                temperature: 1
             })
         });
 
