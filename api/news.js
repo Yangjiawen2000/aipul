@@ -123,7 +123,7 @@ export default async function handler(req, res) {
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "moonshot-v1-8k",
+                    model: "moonshot-v1-32k",
                     messages: messages
                 })
             });
