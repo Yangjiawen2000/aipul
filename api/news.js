@@ -17,7 +17,7 @@ const tools = [
 export default async function handler(req, res) {
     if (req.method === 'HEAD') return res.status(200).end();
 
-    const forceRefresh = req.query.force === 'true';
+    const forceRefresh = req.query.force === 'true' || req.headers['x-vercel-cron'] === '1';
 
     // 4. Agentic Interaction with Kimi
     // NOTE: Kimi k2.5 can be slow. Vercel Hobby has a 10s limit. 
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     const systemPrompt = `你是一个 2026 年的顶级 AI 行业主理人。
     你的职责是：
     1. 使用 web_search 技能搜索此时此刻（2026年3月）真实的世界动态。
-    2. 基于搜索到的事实，整理成一份 6 条最高热度的动态 JSON。
+    2. 基于搜索到的事实，筛选出 6 条最具影响力和高热度的动态，并按热度指数 (priority) 从高到低排序。
     3. 直接返回结果，不要任何开场白或解释。
     
     JSON 格式要求：
