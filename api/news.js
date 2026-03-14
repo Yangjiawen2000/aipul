@@ -19,20 +19,24 @@ export default async function handler(req, res) {
     const forceRefresh = req.query.force === 'true';
 
     // 4. Agentic Interaction with Kimi
+    // NOTE: Kimi k2.5 can be slow. Vercel Hobby has a 10s limit. 
+    // We use a highly aggressive prompt to try and stay under the limit.
     const apiKey = process.env.KIMI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: "Missing API Key" });
+
+    console.log('[API/NEWS] Starting Kimi Request...');
 
     const systemPrompt = `你是一个 2026 年的顶级 AI 行业主理人。
     你的职责是：
     1. 使用 web_search 技能搜索此时此刻（2026年3月）真实的世界动态。
-    2. 基于搜索到的真实科技媒体链接和事实，整理成一份 9 条动态的 JSON 报告。
-    3. 严禁虚构 URL，必须使用搜索结果中的真实链接。
+    2. 基于搜索到的事实，整理成一份 6 条最高热度的动态 JSON。
+    3. 直接返回结果，不要任何开场白或解释。
     
     分类限选：[大模型, 机器人, 算力芯片, 多模态, 智驾, 安全治理, 其他]`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: "搜索并分析当前（2026年3月）全球最震憾的 9 条 AI 行业动态，并按要求输出 JSON。" }
+        { role: "user", content: "返回 6 条最高热度的 AI 行业动态并生成 JSON。保持极简。不要深度长考。" }
     ];
 
     try {
@@ -97,10 +101,9 @@ export default async function handler(req, res) {
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "kimi-k2.5",
+                    model: "moonshot-v1-32k",
                     messages: messages,
-                    response_format: { type: "json_object" }, // Enable JSON Mode
-                    thinking: { enabled: false } // Disable thinking for speed
+                    response_format: { type: "json_object" } // Enable JSON Mode
                 })
             });
             result = await response.json();
@@ -131,11 +134,9 @@ export default async function handler(req, res) {
                 freshData.hero = freshData.trends[0] || { title: "AI Pulse 2026", summary: "极智先锋，领航未来。", category: "智驾", time: "Just Now", url: "#" };
             }
 
-            // Ensure we have exactly 9 trends for the grid layout (if possible)
-            if (freshData.trends.length < 9 && freshData.trends.length > 0) {
-                while (freshData.trends.length < 9) {
-                    freshData.trends.push({ ...freshData.trends[0], id: Math.random() });
-                }
+            // Ensure we have at least some trends
+            if (freshData.trends.length === 0) {
+                freshData.trends.push({ ...freshData.hero, id: 'manual-1' });
             }
 
             res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');

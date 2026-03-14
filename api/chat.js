@@ -38,9 +38,8 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "kimi-k2.5",
-                messages: messages,
-                thinking: { enabled: false }
+                model: "moonshot-v1-8k",
+                messages: messages
             })
         });
 
@@ -51,7 +50,7 @@ export default async function handler(req, res) {
             return res.status(response.status).json({ error: "Chat API Failed", details: result });
         }
 
-        return res.status(200).json(result);
+        return res.status(200).json({ reply: result.choices[0].message.content });
     } catch (error) {
         console.error('Chat Proxy Error:', error);
     }
