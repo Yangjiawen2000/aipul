@@ -60,9 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Auto-load from backend proxy on start if no data
-    fetchNewsFromKimi();
-
     // Auto-refresh every 30 minutes
     setInterval(() => {
         checkApiConnectivity();
@@ -429,6 +426,11 @@ async function fetchNewsFromKimi(apiKey) {
         if (!response.ok) {
             console.error('❌ AI Fetch Logic Error:', result);
             throw new Error(result.error || 'Fetch Failed');
+        }
+
+        const dataSource = response.headers.get('x-data-source');
+        if (dataSource) {
+            console.log(`📊 Data Source: ${dataSource}`);
         }
 
         // Handle both proxy direct JSON and Moonshot direct format

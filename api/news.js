@@ -22,11 +22,14 @@ export default async function handler(req, res) {
         // If we have fresh enough data, serve it instantly!
         if (cachedData && lastUpdate && (now - lastUpdate < CACHE_DURATION)) {
             console.log('Serving from Global Content Pool...');
+            res.setHeader('x-data-source', 'Redis-Global-Pool');
             return res.status(200).json(cachedData);
         }
     } catch (kvError) {
         console.warn('Vercel KV not configured or failing. Falling back to live fetch.', kvError.message);
     }
+
+    res.setHeader('x-data-source', 'Kimi-AI-Live');
 
     // 2. Security Check: API Key must be set in Vercel Environment Variables
     const apiKey = process.env.KIMI_API_KEY;
