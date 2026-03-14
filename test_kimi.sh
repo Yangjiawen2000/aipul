@@ -21,8 +21,7 @@ RESPONSE1=$(curl -s -X POST "$BASE_URL" \
     ],
     "tools": [{"type": "builtin_function", "function": {"name": "$web_search"}}],
     "tool_choice": "auto",
-    "thinking": {"enabled": true},
-    "temperature": 1
+    "thinking": {"enabled": true}
   }')
 
 # 检查是否报错
@@ -73,8 +72,7 @@ if [ ! -z "$TOOL_CALL_ID" ]; then
             \"content\": \"$TOOL_ARGS\"
           }
         ],
-        \"thinking\": {\"enabled\": true},
-        \"temperature\": 1
+        \"thinking\": {\"enabled\": true}
       }")
 
     SUMMARY=$(echo $FINAL_DATA | sed -n 's/.*"content":"\(.*\)","reasoning_content".*/\1/p')
