@@ -49,7 +49,8 @@ export default async function handler(req, res) {
         res.setHeader('x-debug-cache', `ERROR-${cacheErr.message.slice(0, 20)}`);
     }
 
-    const systemPrompt = `顶级AI主理人。调取web_search搜索2026年3月行业动态。
+    const systemPrompt = `顶级AI主理人。调取web_search深度搜索2026年3月全球（硅谷、中国、欧洲）AI动态。
+    必须覆盖不同领域：[大模型更新, 机器人进阶, 算力硬件, 政策治理, 开源社区]。
     仅输出JSON：
     {
       "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
@@ -57,11 +58,11 @@ export default async function handler(req, res) {
         { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
       ]
     }
-    限4条动态。必须全部使用中文。不要任何前言。`;
+    精选 6 条全球热点。必须全部使用中文。不要任何前言。`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `搜索并整理 4 条 AI 行业动态。必须中文。 (ID:${Date.now()})` }
+        { role: "user", content: `深度搜索并整理 6 条覆盖全球多元领域的 AI 行业动态。必须中文。 (ID:${Date.now()})` }
     ];
 
     try {
