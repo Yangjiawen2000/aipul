@@ -25,19 +25,19 @@
                 <span class="logo-year">2025</span>
             </div>
             <div class="nav-actions">
-                <div class="nav-date" id="current-date">2026.03.13</div>
-                <button id="settings-toggle" class="icon-btn">⚙️</button>
+                <div id="connectivity-status" class="connectivity-status checking">探测中...</div>
+                <div class="nav-divider">|</div>
+                <div class="live-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">AI 分析师: 在线</span>
+                </div>
+                <div class="nav-divider">|</div>
+                <div class="nav-date" id="current-date">2026.03.14</div>
+                <button id="refresh-data" class="icon-btn" title="刷新 AI 分析">🔄</button>
             </div>
         </div>
     </nav>
 
-    <!-- Global Settings Pane -->
-    <div id="settings-pane" class="settings-pane">
-        <h3>API 设置</h3>
-        <p>输入你的 Kimi API Key 以启用实时动态</p>
-        <input type="password" id="kimi-api-key" placeholder="输入 Kimi API Key">
-        <button id="save-settings" class="btn-small">保存并刷新</button>
-    </div>
 
     <main class="container">
         <header class="hero-section" id="hero-section">
@@ -51,6 +51,19 @@
                 </div>
             </div>
         </header>
+
+        <section class="filter-section">
+            <div class="filter-bar" id="category-filters">
+                <button class="filter-btn active" data-category="all">全部动态</button>
+                <div class="filter-divider"></div>
+                <button class="filter-btn" data-category="大语言模型">大模型</button>
+                <button class="filter-btn" data-category="机器人学">机器人</button>
+                <button class="filter-btn" data-category="芯片/算力">算力芯片</button>
+                <button class="filter-btn" data-category="多模态">多模态</button>
+                <button class="filter-btn" data-category="智能驾驶">智驾</button>
+                <button class="filter-btn" data-category="AI 安全">安全治理</button>
+            </div>
+        </section>
 
         <section class="trends-grid" id="trends-grid">
             <!-- Cards will be injected by JS -->
@@ -79,6 +92,27 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- AI Smart Chat -->
+    <div id="chat-widget" class="chat-widget">
+        <div id="chat-window" class="chat-window">
+            <div class="chat-header">
+                <h3>AI 智能助手</h3>
+                <button id="close-chat" class="close-btn-small">&times;</button>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+                <div class="message system">你好！我是 AI 脉动助手，有什么可以帮你的吗？</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="输入问题...">
+                <button id="send-chat" class="btn-send">发送</button>
+            </div>
+        </div>
+        <button id="chat-toggle" class="chat-toggle-btn">
+            <span class="chat-icon">💬</span>
+            <span class="chat-text">问问 AI</span>
+        </button>
     </div>
 
     <script src="app.js"></script>

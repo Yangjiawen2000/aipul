@@ -23,9 +23,9 @@ const AI_NEWS_DATA = {
 // Initialize the Dashboard
 document.addEventListener('DOMContentLoaded', () => {
     updateDate();
-    renderHero();
-    renderTrends();
+    checkApiConnectivity();
     animateOnScroll();
+    initChat();
     
     // Disable right-click for a more native "app" feel
     document.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -39,41 +39,145 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === modalOverlay) closeModal();
     });
 
-    const settingsToggle = document.getElementById('settings-toggle');
-    const settingsPane = document.getElementById('settings-pane');
-    const saveSettingsBtn = document.getElementById('save-settings');
-    const apiKeyInput = document.getElementById('kimi-api-key');
-
-    // Load saved API Key
-    const savedKey = localStorage.getItem('kimi_api_key');
-    if (savedKey) {
-        apiKeyInput.value = savedKey;
-        fetchNewsFromKimi(savedKey);
-    }
-
-    if (settingsToggle) {
-        settingsToggle.addEventListener('click', () => {
-            settingsPane.classList.toggle('active');
+    // Refresh Button logic
+    const refreshBtn = document.getElementById('refresh-data');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            refreshBtn.classList.add('refresh-btn-anim');
+            fetchNewsFromKimi(); // Call without key to use backend proxy
+            setTimeout(() => refreshBtn.classList.remove('refresh-btn-anim'), 800);
         });
     }
 
-    if (saveSettingsBtn) {
-        saveSettingsBtn.addEventListener('click', () => {
-            const key = apiKeyInput.value.trim();
-            if (key) {
-                localStorage.setItem('kimi_api_key', key);
-                settingsPane.classList.remove('active');
-                fetchNewsFromKimi(key);
-            }
+    // Category Filter logic
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const category = btn.getAttribute('data-category');
+            renderTrends(false, category);
         });
-    }
+    });
+
+    // Auto-load from backend proxy on start if no data
+    fetchNewsFromKimi();
 
     // Auto-refresh every 30 minutes
     setInterval(() => {
-        const key = localStorage.getItem('kimi_api_key');
-        if (key) fetchNewsFromKimi(key);
+        checkApiConnectivity();
     }, 30 * 60 * 1000);
 });
+
+// Check if Backend API is available
+async function checkApiConnectivity() {
+    const statusEl = document.getElementById('connectivity-status');
+    if (!statusEl) return;
+
+    try {
+        const response = await fetch('/api/news', { method: 'HEAD' });
+        if (response.ok) {
+            statusEl.textContent = '☁️ 云端同步';
+            statusEl.className = 'connectivity-status cloud';
+            fetchNewsFromKimi(); // Load real data
+        } else {
+            throw new Error('Backend unreachable');
+        }
+    } catch (error) {
+        console.warn('Backend proxy not found. Running in Local Mode.');
+        statusEl.textContent = '🏠 本地模式 (模拟数据)';
+        statusEl.className = 'connectivity-status local';
+        // Fallback to mock data
+        renderHero();
+        renderTrends();
+    }
+}
+
+// Chat History
+let chatHistory = [];
+
+function initChat() {
+    const chatToggle = document.getElementById('chat-toggle');
+    const chatWindow = document.getElementById('chat-window');
+    const closeChat = document.getElementById('close-chat');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-chat');
+
+    if (chatToggle) {
+        chatToggle.addEventListener('click', () => {
+            chatWindow.classList.toggle('active');
+        });
+    }
+
+    if (closeChat) {
+        closeChat.addEventListener('click', () => {
+            chatWindow.classList.remove('active');
+        });
+    }
+
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendMessage);
+    }
+
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const container = document.getElementById('chat-messages');
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    // Add user message
+    addChatMessage('user', text);
+    input.value = '';
+
+    // Add loading indicator
+    const loadingId = 'msg-' + Date.now();
+    addChatMessage('system', '正在思考...', loadingId);
+
+    try {
+        // Send to backend proxy
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, history: chatHistory })
+        });
+
+        const result = await response.json();
+        
+        // Remove loading message
+        document.getElementById(loadingId)?.remove();
+
+        if (response.ok) {
+            addChatMessage('system', result.reply);
+            chatHistory.push({ role: "user", content: text });
+            chatHistory.push({ role: "assistant", content: result.reply });
+            // Limit history
+            if (chatHistory.length > 10) chatHistory.splice(0, 2);
+        } else {
+            addChatMessage('system', '抱歉，我现在连不上大脑了（API 错误）。如果你正在本地预览，请部署到 Vercel 后再试。');
+        }
+    } catch (error) {
+        document.getElementById(loadingId)?.remove();
+        addChatMessage('system', '网络连接由于本地环境限制失败。请确保项目已部署至云端环境。');
+    }
+}
+
+function addChatMessage(role, content, id = null) {
+    const container = document.getElementById('chat-messages');
+    const msg = document.createElement('div');
+    msg.className = `message ${role}`;
+    if (id) msg.id = id;
+    msg.textContent = content;
+    container.appendChild(msg);
+    container.scrollTop = container.scrollHeight;
+}
 
 // Update Current Date
 function updateDate() {
@@ -117,13 +221,14 @@ function renderHero(isLoading = false) {
     }, 300);
 }
 
-// Render Trends Grid with Skeleton Support
-function renderTrends(isLoading = false) {
+// Render Trends Grid with Skeleton & Filter Support
+function renderTrends(isLoading = false, filterCategory = 'all') {
     const grid = document.getElementById('trends-grid');
     if (!grid) return;
     grid.innerHTML = '';
 
     if (isLoading) {
+        // ... (skeleton logic remains same)
         for (let i = 0; i < 9; i++) {
             const skeleton = document.createElement('div');
             skeleton.className = 'glass-card trend-card skeleton-loading';
@@ -144,9 +249,19 @@ function renderTrends(isLoading = false) {
         return;
     }
 
-    // Sort by priority descending
-    const sortedTrends = [...AI_NEWS_DATA.trends].sort((a, b) => b.priority - a.priority);
+    // Filter and Sort by priority descending
+    let filteredTrends = [...AI_NEWS_DATA.trends];
+    if (filterCategory !== 'all') {
+        filteredTrends = filteredTrends.filter(item => item.category === filterCategory);
+    }
     
+    const sortedTrends = filteredTrends.sort((a, b) => b.priority - a.priority);
+    
+    if (sortedTrends.length === 0) {
+        grid.innerHTML = '<p class="no-results">该分类下暂无最新动态</p>';
+        return;
+    }
+
     sortedTrends.forEach((item, index) => {
         const card = document.createElement('div');
         card.className = 'glass-card trend-card';
