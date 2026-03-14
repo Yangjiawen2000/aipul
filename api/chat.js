@@ -38,7 +38,7 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "moonshot-v1-32k",
+                model: "kimi-k2.5",
                 messages: messages,
                 temperature: 0.7
             })
