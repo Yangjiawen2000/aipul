@@ -48,7 +48,7 @@ export default async function handler(req, res) {
                 messages: messages,
                 tools: tools,
                 tool_choice: "auto",
-                thinking: { enabled: true } // Enable thinking to get reasoning_content
+                thinking: { enabled: false } // Disable thinking for Vercel Hobby (Speed > Depth)
             })
         });
 
@@ -100,7 +100,7 @@ export default async function handler(req, res) {
                     model: "kimi-k2.5",
                     messages: messages,
                     response_format: { type: "json_object" }, // Enable JSON Mode
-                    thinking: { enabled: true } // Keep thinking enabled for consistency
+                    thinking: { enabled: false } // Disable thinking for speed
                 })
             });
             result = await response.json();

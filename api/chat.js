@@ -40,7 +40,7 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 model: "kimi-k2.5",
                 messages: messages,
-                thinking: { enabled: true }
+                thinking: { enabled: false }
             })
         });
 
