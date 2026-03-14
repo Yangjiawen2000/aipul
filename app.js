@@ -1,5 +1,5 @@
 // Mock Data for AI Frontiers 2025 (Expanded to 9 items)
-const AI_NEWS_DATA = {
+let AI_NEWS_DATA = {
     hero: {
         title: "GPT-5 'Orion' 内部预览：推理能力指数级跃迁",
         summary: "OpenAI 下一代模型在慢思考（System 2）上取得重大突破，标志着迈向通用人工智能（AGI）的关键里程碑。",
