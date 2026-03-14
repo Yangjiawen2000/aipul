@@ -1,10 +1,10 @@
 // Vercel Serverless Function: Backend Proxy for Kimi API
 // This protects your API Key and provides basic rate limiting.
+import { kv } from '@vercel/kv';
 
-// Simple In-memory Cache for Rate Limiting & Performance (per-instance)
-let cachedData = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+// Cache Duration: 1 hour for global content pool
+const GLOBAL_CACHE_KEY = 'ai_pulse_data_pool';
+const CACHE_DURATION = 60 * 60 * 1000; 
 
 export default async function handler(req, res) {
     // 0. Connectivity check: return 200 for HEAD or simple GET
@@ -12,11 +12,20 @@ export default async function handler(req, res) {
         return res.status(200).end();
     }
 
-    // 1. Basic Rate Limiting / Caching
-    const now = Date.now();
-    if (cachedData && (now - lastFetchTime < CACHE_DURATION)) {
-        console.log('Serving from cache...');
-        return res.status(200).json(cachedData);
+    // 1. Global Content Pool (Redis / Vercel KV)
+    let cachedData = null;
+    try {
+        cachedData = await kv.get(GLOBAL_CACHE_KEY);
+        const lastUpdate = await kv.get(GLOBAL_CACHE_KEY + '_time');
+        const now = Date.now();
+
+        // If we have fresh enough data, serve it instantly!
+        if (cachedData && lastUpdate && (now - lastUpdate < CACHE_DURATION)) {
+            console.log('Serving from Global Content Pool...');
+            return res.status(200).json(cachedData);
+        }
+    } catch (kvError) {
+        console.warn('Vercel KV not configured or failing. Falling back to live fetch.', kvError.message);
     }
 
     // 2. Security Check: API Key must be set in Vercel Environment Variables
@@ -72,9 +81,9 @@ export default async function handler(req, res) {
         if (jsonMatch) {
             const freshData = JSON.parse(jsonMatch[0]);
             
-            // Update Cache
-            cachedData = freshData;
-            lastFetchTime = now;
+            // Update Global Pool (Async - don't block response)
+            kv.set(GLOBAL_CACHE_KEY, freshData).catch(e => console.error('KV Set Error:', e));
+            kv.set(GLOBAL_CACHE_KEY + '_time', Date.now()).catch(e => console.error('KV Time Set Error:', e));
             
             return res.status(200).json(freshData);
         } else {

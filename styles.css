@@ -508,6 +508,62 @@ h1 {
     font-size: 0.85rem;
 }
 
+/* Reader Mode & Crawler UI */
+.article-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: var(--accent-color);
+    font-style: italic;
+    animation: statusPulse 1.5s infinite;
+}
+
+.reader-mode-content {
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 1.05rem;
+    margin-top: 1.5rem;
+}
+
+.reader-mode-content p {
+    margin-bottom: 1.5rem;
+}
+
+.reader-mode-content h1, 
+.reader-mode-content h2, 
+.reader-mode-content h3 {
+    margin: 2rem 0 1rem 0;
+    color: #fff;
+}
+
+.reader-mode-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.crawl-error {
+    background: rgba(255, 68, 68, 0.05);
+    border: 1px solid rgba(255, 68, 68, 0.2);
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.p-summary {
+    margin-top: 1.2rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    text-align: left;
+}
+
 /* Refresh Animation */
 .refresh-btn-anim {
     animation: rotate 0.8s ease-in-out;

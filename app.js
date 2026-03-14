@@ -307,17 +307,17 @@ function openModal(data) {
     modalImpact.textContent = data.impact;
     modalImpact.className = `impact-tag tag-${getImpactClass(data.impact)}`;
     modalTitle.textContent = data.title;
-    modalBody.textContent = data.summary;
+    modalBody.innerHTML = `<div class="article-loading">正在为您抓取深度内容...</div>`;
     modalPriority.textContent = data.priority;
     
-    // Update or Add Source Link in Modal
+    // Update Source Link in Modal
     if (!modal.querySelector('.modal-footer')) {
         modalFooter.className = 'modal-footer';
         modal.querySelector('.modal-content').appendChild(modalFooter);
     }
     modalFooter.innerHTML = `
-        <a href="${data.url}" target="_blank" class="source-btn" style="width: 100%; justify-content: center; margin-top: 2rem; font-size: 1rem;">
-            深度阅读原文 <span class="source-icon">→</span>
+        <a href="${data.url}" target="_blank" class="source-btn" style="width: 100%; justify-content: center; margin-top: 1.5rem; font-size: 0.9rem; opacity: 0.7;">
+            阅读网页原文 <span class="source-icon">→</span>
         </a>
     `;
     
@@ -325,6 +325,59 @@ function openModal(data) {
     setTimeout(() => {
         modal.classList.add('active');
     }, 10);
+
+    // Trigger Crawler
+    fetchArticleContent(data.url, modalBody);
+}
+
+// Crawler Fetch Logic
+async function fetchArticleContent(url, container) {
+    try {
+        const response = await fetch(`/api/crawl?url=${encodeURIComponent(url)}`);
+        const result = await response.json();
+
+        if (response.ok) {
+            // Reader Mode Rendering
+            container.innerHTML = `
+                <div class="reader-mode-content">
+                    ${cleanCrawledContent(result.content)}
+                </div>
+            `;
+        } else {
+            throw new Error('Crawl failed');
+        }
+    } catch (error) {
+        container.innerHTML = `
+            <div class="crawl-error">
+                <p>抱歉，该网页开启了防爬设置，无法直接在该页面阅读。</p>
+                <div class="p-summary">${AI_NEWS_DATA.trends.find(t => t.url === url)?.summary || ''}</div>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem;">提示：您可以点击下方的“阅读网页原文”去查看。</p>
+            </div>
+        `;
+    }
+}
+
+function cleanCrawledContent(html) {
+    // Basic heuristics to find the most "content-looking" part of the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Remove known noise
+    const noiseSelectors = 'script, style, nav, footer, header, ads, .ads, .sidebar, #comments';
+    doc.querySelectorAll(noiseSelectors).forEach(el => el.remove());
+
+    // Try to find the article body (heuristically)
+    const content = doc.querySelector('article') || doc.querySelector('.article-content') || doc.querySelector('main') || doc.querySelector('.content') || doc.body;
+    
+    // Clean up images - ensure they don't break layout
+    content.querySelectorAll('img').forEach(img => {
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.borderRadius = '8px';
+        img.style.marginTop = '1rem';
+    });
+
+    return content.innerHTML;
 }
 
 // Helper to map Chinese impact to CSS classes
