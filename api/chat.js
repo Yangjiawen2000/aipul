@@ -45,16 +45,14 @@ export default async function handler(req, res) {
         });
 
         const result = await response.json();
-        
+
         if (!response.ok) {
-            return res.status(response.status).json({ error: "Kimi API Error", details: result });
+            console.error('Moonshot Chat Error:', result);
+            return res.status(response.status).json({ error: "Chat API Failed", details: result });
         }
 
-        const reply = result.choices[0].message.content;
-        return res.status(200).json({ reply });
-
+        return res.status(200).json(result);
     } catch (error) {
         console.error('Chat Proxy Error:', error);
-        return res.status(500).json({ error: "Internal Proxy Error", message: error.message });
     }
 }

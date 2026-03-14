@@ -88,7 +88,7 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "kimi-k2.5",
+                model: "kimi-k2.5", // Aligned with Official Doc
                 messages: messages,
                 tools: tools,
                 tool_choice: "auto"
@@ -96,6 +96,12 @@ export default async function handler(req, res) {
         });
 
         let result = await response.json();
+        
+        if (!response.ok) {
+            console.error('Kimi API Step 1 Error:', result);
+            return res.status(response.status).json({ error: "Moonshot API Step 1 Failed", details: result });
+        }
+
         let message = result.choices[0].message;
 
         // Step 2: Handle Tool Calls (Multi-turn Agent)
@@ -123,11 +129,16 @@ export default async function handler(req, res) {
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "kimi-k2.5",
+                    model: "kimi-k2.5", // Aligned with Official Doc
                     messages: messages
                 })
             });
             result = await response.json();
+
+            if (!response.ok) {
+                console.error('Kimi API Step 3 Error:', result);
+                return res.status(response.status).json({ error: "Moonshot API Step 3 Failed", details: result });
+            }
         }
 
         const finalContent = result.choices[0].message.content;
