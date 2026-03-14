@@ -1,8 +1,4 @@
 // Vercel Serverless Function: Agentic Backend Proxy for Kimi API (v2)
-import { kv } from '@vercel/kv';
-
-const GLOBAL_CACHE_KEY = 'ai_pulse_data_pool_v2'; // Bump version for 2026/Agentic
-const CACHE_DURATION = 60 * 60 * 1000;
 
 // 1. Tool Definition for Kimi (Using Native $web_search)
 const tools = [
@@ -21,21 +17,6 @@ export default async function handler(req, res) {
     if (req.method === 'HEAD') return res.status(200).end();
 
     const forceRefresh = req.query.force === 'true';
-    const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
-
-    // 3. Cache Check
-    if (hasKV && !forceRefresh) {
-        try {
-            const cachedData = await kv.get(GLOBAL_CACHE_KEY);
-            const lastUpdate = await kv.get(GLOBAL_CACHE_KEY + '_time');
-            if (cachedData && lastUpdate && (Date.now() - lastUpdate < CACHE_DURATION)) {
-                res.setHeader('x-data-source', 'Redis-Global-Pool');
-                return res.status(200).json(cachedData);
-            }
-        } catch (kvError) {
-            console.warn('KV Access Error:', kvError.message);
-        }
-    }
 
     // 4. Agentic Interaction with Kimi
     const apiKey = process.env.KIMI_API_KEY;
@@ -157,12 +138,6 @@ export default async function handler(req, res) {
                 }
             }
 
-            // 5. Update Global Pool
-            if (hasKV) {
-                await kv.set(GLOBAL_CACHE_KEY, freshData);
-                await kv.set(GLOBAL_CACHE_KEY + '_time', Date.now());
-            }
-
             res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
             return res.status(200).json(freshData);
         }
@@ -170,21 +145,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Agentic Proxy Error:', error);
-
-        // GRACEFUL DEGRADATION: If AI fails (429, Timeout, etc.), try to serve stale but valid KV data
-        if (hasKV) {
-            try {
-                const staleData = await kv.get(GLOBAL_CACHE_KEY);
-                if (staleData) {
-                    console.log('Serving Stale Data due to AI Error');
-                    res.setHeader('x-data-source', 'Redis-Global-Pool (Stale-Fallback)');
-                    return res.status(200).json(staleData);
-                }
-            } catch (kvError) {
-                console.error('Stale Fallback Failed:', kvError.message);
-            }
-        }
-
         return res.status(500).json({ error: "Agentic Loop Failed", message: error.message });
     }
 }
