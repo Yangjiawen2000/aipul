@@ -31,54 +31,73 @@ if [ ! -z "$ERROR" ]; then
     exit 1
 fi
 
-# 提取思考内容和工具调用信息
-REASONING=$(echo $RESPONSE1 | sed -n 's/.*"reasoning_content":"\([^"]*\)".*/\1/p')
-TOOL_CALL_ID=$(echo $RESPONSE1 | sed -n 's/.*"id":"\(call_[^"]*\)".*/\1/p')
-TOOL_ARGS=$(echo $RESPONSE1 | sed -n 's/.*"arguments":"\([^"]*\)".*/\1/p')
+# 使用 Python 进行可靠的 JSON 解析 (macOS 自带)
+REASONING=$(python3 -c "import sys, json; data = json.load(sys.stdin); print(data['choices'][0]['message'].get('reasoning_content', ''))" <<< "$RESPONSE1")
+TOOL_CALL=$(python3 -c "import sys, json; data = json.load(sys.stdin); msg = data['choices'][0]['message']; tc = msg.get('tool_calls', [{}])[0]; print(json.dumps(tc))" <<< "$RESPONSE1")
 
-echo -e "✅ Kimi 思考完成:\n$REASONING"
+TOOL_CALL_ID=$(python3 -c "import sys, json; data = json.loads(sys.argv[1]); print(data.get('id', ''))" "$TOOL_CALL")
+TOOL_ARGS=$(python3 -c "import sys, json; data = json.loads(sys.argv[1]); print(data.get('function', {}).get('arguments', ''))" "$TOOL_CALL")
 
-if [ ! -z "$TOOL_CALL_ID" ]; then
+if [ -z "$REASONING" ]; then
+    echo "⚠️ 未提取到思考内容。"
+else
+    echo -e "✅ Kimi 思考完成:\n$REASONING"
+fi
+
+if [ ! -z "$TOOL_CALL_ID" ] && [ "$TOOL_CALL_ID" != "None" ]; then
     echo -e "\n📡 检测到工具调用 ID: $TOOL_CALL_ID"
     echo "🔧 执行搜索参数: $TOOL_ARGS"
 
     # 2. 步骤 2: 汇总结果 (模拟多轮对话)
     echo -e "\n[Turn 2] 正在进行最终汇总..."
-    # 构造极简的消息历史
+    
+    # 构造完整的 JSON Payload
+    PAYLOAD=$(python3 -c "
+import sys, json
+api_key = sys.argv[1]
+base_url = sys.argv[2]
+reasoning = sys.argv[3]
+tc_id = sys.argv[4]
+tc_args = sys.argv[5]
+
+payload = {
+    'model': 'kimi-k2.5',
+    'messages': [
+        {'role': 'system', 'content': '你是一个专业的 AI 行业分析师。'},
+        {'role': 'user', 'content': '搜一下 2026 年 Nvidia 最强显卡。'},
+        {
+            'role': 'assistant',
+            'content': None,
+            'reasoning_content': reasoning,
+            'tool_calls': [
+                {
+                    'id': tc_id,
+                    'type': 'builtin_function',
+                    'function': {'name': '\$web_search', 'arguments': tc_args}
+                }
+            ]
+        },
+        {
+            'role': 'tool',
+            'tool_call_id': tc_id,
+            'name': '\$web_search',
+            'content': tc_args
+        }
+    ],
+    'thinking': {'enabled': True}
+}
+print(json.dumps(payload))
+" "$API_KEY" "$BASE_URL" "$REASONING" "$TOOL_CALL_ID" "$TOOL_ARGS")
+
     FINAL_DATA=$(curl -s -X POST "$BASE_URL" \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer $API_KEY" \
-      -d "{
-        \"model\": \"kimi-k2.5\",
-        \"messages\": [
-          {\"role\": \"system\", \"content\": \"你是一个专业的 AI 行业分析师。\"},
-          {\"role\": \"user\", \"content\": \"搜一下 2026 年 Nvidia 最强显卡。\"},
-          {
-            \"role\": \"assistant\",
-            \"content\": null,
-            \"reasoning_content\": \"$REASONING\",
-            \"tool_calls\": [
-              {
-                \"id\": \"$TOOL_CALL_ID\",
-                \"type\": \"function\",
-                \"function\": {\"name\": \"\$web_search\", \"arguments\": \"$TOOL_ARGS\"}
-              }
-            ]
-          },
-          {
-            \"role\": \"tool\",
-            \"tool_call_id\": \"$TOOL_CALL_ID\",
-            \"name\": \"\$web_search\",
-            \"content\": \"$TOOL_ARGS\"
-          }
-        ],
-        \"thinking\": {\"enabled\": true}
-      }")
+      -d "$PAYLOAD")
 
-    SUMMARY=$(echo $FINAL_DATA | sed -n 's/.*"content":"\(.*\)","reasoning_content".*/\1/p')
+    SUMMARY=$(python3 -c "import sys, json; data = json.load(sys.stdin); print(data['choices'][0]['message'].get('content', '无法获取回答'))" <<< "$FINAL_DATA")
     echo -e "\n✨ 最终总结:\n$SUMMARY"
 else
-    echo "⚠️ 未检测到工具调用。"
+    echo "⚠️ 未检测到工具调用。原始回复: $RESPONSE1"
 fi
 
 echo -e "\n✅ 验证结束。"

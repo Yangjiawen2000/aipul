@@ -82,15 +82,18 @@ export default async function handler(req, res) {
 
         // Step 2: Handle Native Tool Calls (Multi-turn Agent)
         if (message.tool_calls) {
-            // CRITICAL: Preserve reasoning_content for k2.5 stability
-            // We must include the reasoning_content provided by the model in the previous turn.
+            // CRITICAL: Preserve reasoning_content and tool_calls for k2.5 stability
+            // We map the message exactly as returned by the model to maintain the thinking state.
             const assistantMessage = {
                 role: "assistant",
                 content: message.content || null,
-                tool_calls: message.tool_calls,
-                reasoning_content: message.reasoning_content || undefined
+                reasoning_content: message.reasoning_content || undefined,
+                tool_calls: message.tool_calls.map(tc => ({
+                    id: tc.id,
+                    type: tc.type || "builtin_function",
+                    function: tc.function
+                }))
             };
-            // Note: If reasoning_content exists, it must be exactly as returned.
             messages.push(assistantMessage);
 
             for (const toolCall of message.tool_calls) {
