@@ -306,34 +306,25 @@ function renderTrends(isLoading = false, filterCategory = 'all', instant = false
         grid.innerHTML = '<p class="no-results">该分类下暂无最新动态</p>';
         return;
     }
-
-    sortedTrends.forEach((item, index) => {
-        const card = document.createElement('div');
-        card.className = 'glass-card trend-card';
-        card.style.animationDelay = `${index * 0.1}s`;
-        
-        card.innerHTML = `
-            <div class="trend-meta">
-                <span class="category">${item.category}</span>
-                <span class="impact-tag tag-${getImpactClass(item.impact)}">${item.impact}</span>
-            </div>
-            <h3 class="trend-title">${item.title}</h3>
-            <p class="trend-summary">${item.summary}</p>
-            <div class="card-footer">
-                <span class="priority-indicator">热度指数: ${item.priority}</span>
-                <a href="${item.url}" target="_blank" class="source-btn" onclick="event.stopPropagation()">
-                    <span class="source-icon">🔗</span> 查看原文
-                </a>
-            </div>
-        `;
-        
-        // Add click listener for modal
-        card.addEventListener('click', () => {
-            openModal(item);
+    if (instant) {
+        grid.innerHTML = '';
+        sortedTrends.forEach((item, index) => {
+            const card = createTrendCard(item, index, true);
+            grid.appendChild(card);
         });
-        
-        grid.appendChild(card);
-    });
+        return;
+    }
+
+    // Smooth transition for non-instant renders
+    grid.style.opacity = '0';
+    setTimeout(() => {
+        grid.innerHTML = '';
+        sortedTrends.forEach((item, index) => {
+            const card = createTrendCard(item, index, false);
+            grid.appendChild(card);
+        });
+        grid.style.opacity = '1';
+    }, 400);
 }
 
 // Modal Logic
