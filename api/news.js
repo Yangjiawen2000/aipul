@@ -49,19 +49,19 @@ export default async function handler(req, res) {
         res.setHeader('x-debug-cache', `ERROR-${cacheErr.message.slice(0, 20)}`);
     }
 
-    const systemPrompt = `Top AI Analyst. Use web_search for Mar 2026 facts.
-    Output JSON ONLY:
+    const systemPrompt = `顶级AI主理人。调取web_search搜索2026年3月行业动态。
+    仅输出JSON：
     {
       "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
       "trends": [
         { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
       ]
     }
-    Limit to 4 high-impact items. No preamble.`;
+    限4条动态。必须全部使用中文。不要任何前言。`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Search & synthesis 4 AI trends for Mar 2026. (ID:${Date.now()})` }
+        { role: "user", content: `搜索并整理 4 条 AI 行业动态。必须中文。 (ID:${Date.now()})` }
     ];
 
     try {

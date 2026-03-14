@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             AI_NEWS_DATA = JSON.parse(cachedData);
             // Render immediately without animation delay for instant feel
             renderHero(false, AI_NEWS_DATA.hero, true); 
-            renderTrends(false, AI_NEWS_DATA.trends, true);
+            renderTrends(false, 'all', true); 
         } catch (e) {
             console.error('Local cache corrupted');
         }
@@ -507,13 +507,13 @@ function updateWidgetData(data, source = 'AI-Discovery') {
     
     // Update live status text to show source
     if (statusText) {
-        if (source.includes('Cache')) {
-            statusText.textContent = `数据源: 容器缓存 (Redis)`;
-        } else if (source.includes('Discovery') || source.includes('Kimi')) {
-            statusText.textContent = `数据源: AI 实时全网发现`;
-        } else {
-            statusText.textContent = `数据源: ${source}`;
-        }
+            if (source.includes('Cache') || source.includes('KV')) {
+                statusText.innerHTML = `数据源: <span style="color: #4cd964">● 容器缓存 (Redis)</span>`;
+            } else if (source.includes('Discovery') || source.includes('Kimi')) {
+                statusText.innerHTML = `数据源: <span style="color: #ffcc00">● AI 实时全网发现</span>`;
+            } else {
+                statusText.textContent = `数据源: ${source}`;
+            }
     }
 
     // Save to LocalStorage for next time
