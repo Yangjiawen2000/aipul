@@ -422,7 +422,7 @@ async function fetchNewsFromKimi(apiKey, force = false) {
     renderTrends(true);
 
     try {
-        const url = force ? '/api/news?force=true' : '/api/news';
+        const url = force ? `/api/news?force=true&t=${Date.now()}` : `/api/news?t=${Date.now()}`;
         console.log(`Using Backend Proxy (${force ? 'Force Refresh' : 'Standard Fetch'})...`);
         
         const response = await fetch(url);

@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: "搜索并整理今日 6 条热度最高的 AI 行业动态。直接输出合规 JSON。不要长考。" }
+        { role: "user", content: `[RequestID: ${Date.now()}] 必须调用 web_search 搜索 2026年3月 AI 动态。返回包含 6 条详细动态的 JSON。` }
     ];
 
     try {
