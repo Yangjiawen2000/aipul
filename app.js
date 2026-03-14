@@ -220,11 +220,12 @@ function renderHero(isLoading = false) {
     if (heroLink) heroLink.style.opacity = '0';
     
     setTimeout(() => {
-        heroTitle.textContent = AI_NEWS_DATA.hero.title;
-        heroSummary.textContent = AI_NEWS_DATA.hero.summary;
+        const heroData = AI_NEWS_DATA?.hero || { title: 'AI Pulse 2026', summary: '情报引擎正在搜索中...', url: '#' };
+        heroTitle.textContent = heroData.title;
+        heroSummary.textContent = heroData.summary;
         
         if (heroLink) {
-            heroLink.onclick = () => window.open(AI_NEWS_DATA.hero.url, '_blank');
+            heroLink.onclick = () => window.open(heroData.url, '_blank');
             heroLink.style.opacity = '1';
         }
         
@@ -262,7 +263,7 @@ function renderTrends(isLoading = false, filterCategory = 'all') {
     }
 
     // Filter and Sort by priority descending
-    let filteredTrends = [...AI_NEWS_DATA.trends];
+    let filteredTrends = Array.isArray(AI_NEWS_DATA?.trends) ? [...AI_NEWS_DATA.trends] : [];
     if (filterCategory !== 'all') {
         filteredTrends = filteredTrends.filter(item => item.category === filterCategory);
     }

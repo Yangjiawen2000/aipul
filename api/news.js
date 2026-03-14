@@ -88,7 +88,7 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "moonshot-v1-8k",
+                model: "moonshot-v1-32k",
                 messages: messages,
                 tools: tools,
                 tool_choice: "auto"
@@ -134,7 +134,28 @@ export default async function handler(req, res) {
         const jsonMatch = finalContent.match(/\{[\s\S]*\}/);
         
         if (jsonMatch) {
-            const freshData = JSON.parse(jsonMatch[0]);
+            let freshData = JSON.parse(jsonMatch[0]);
+            
+            // Normalize Data Structure (Repair if Agentic Kimi missed a key)
+            if (!freshData.trends || !Array.isArray(freshData.trends)) {
+                console.warn('Backend Normalization: Repairing missing trends array.');
+                freshData.trends = freshData.trends || freshData.updates || freshData.news || [];
+                if (!Array.isArray(freshData.trends) && typeof freshData.trends === 'object') {
+                    freshData.trends = Object.values(freshData.trends);
+                }
+            }
+            
+            if (!freshData.hero) {
+                console.warn('Backend Normalization: Repairing missing hero object.');
+                freshData.hero = freshData.trends[0] || { title: "AI Pulse 2026", summary: "极智先锋，领航未来。", category: "智驾", time: "Just Now", url: "#" };
+            }
+
+            // Ensure we have exactly 9 trends for the grid layout (if possible)
+            if (freshData.trends.length < 9 && freshData.trends.length > 0) {
+                while(freshData.trends.length < 9) {
+                    freshData.trends.push({...freshData.trends[0], id: Math.random()});
+                }
+            }
             
             // 5. Update Global Pool
             if (hasKV) {
