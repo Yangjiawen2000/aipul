@@ -36,12 +36,17 @@ export default async function handler(req, res) {
             if (cached) {
                 console.log('[API/NEWS] Serving from Cloud Cache');
                 res.setHeader('x-data-source', 'Vercel-KV-Cache');
+                res.setHeader('x-debug-cache', 'HIT');
                 return res.status(200).json(cached);
+            } else {
+                res.setHeader('x-debug-cache', 'MISS-EMPTY');
             }
+        } else {
+            res.setHeader('x-debug-cache', 'BYPASS-FORCE');
         }
     } catch (cacheErr) {
         console.warn('[API/NEWS] Cache Read Error:', cacheErr.message);
-        // Continue to fresh fetch
+        res.setHeader('x-debug-cache', `ERROR-${cacheErr.message.slice(0, 20)}`);
     }
 
     const systemPrompt = `Top AI Analyst. Use web_search for Mar 2026 facts.
@@ -200,8 +205,10 @@ export default async function handler(req, res) {
             try {
                 await kv.set(CACHE_KEY, freshData, { ex: 86400 }); // Cache for 24 hours
                 console.log('[API/NEWS] Cloud Cache Updated');
+                res.setHeader('x-debug-cache-update', 'SUCCESS');
             } catch (cacheErr) {
                 console.warn('[API/NEWS] Cache Write Error:', cacheErr.message);
+                res.setHeader('x-debug-cache-update', `FAILED-${cacheErr.message.slice(0, 20)}`);
             }
 
             return res.status(200).json(freshData);

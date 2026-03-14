@@ -23,13 +23,13 @@ let AI_NEWS_DATA = {
 // Initialize the Dashboard
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Initial Load: Check LocalStorage for instant display
-    const cachedData = localStorage.getItem('ai_pulse_cache');
     if (cachedData) {
         console.log('🚀 Loading from LocalStorage Cache...');
         try {
             AI_NEWS_DATA = JSON.parse(cachedData);
-            renderHero();
-            renderTrends();
+            // Render immediately without animation delay for instant feel
+            renderHero(false, AI_NEWS_DATA.hero, true); 
+            renderTrends(false, AI_NEWS_DATA.trends, true);
         } catch (e) {
             console.error('Local cache corrupted');
         }
@@ -201,7 +201,7 @@ function updateDate() {
 }
 
 // Render Hero Section
-function renderHero(isLoading = false) {
+function renderHero(isLoading = false, data = null, instant = false) {
     const heroContent = document.querySelector('.hero-card');
     const heroTitle = document.getElementById('hero-title');
     const heroSummary = document.getElementById('hero-summary');
@@ -214,34 +214,65 @@ function renderHero(isLoading = false) {
 
     heroContent.classList.remove('hero-skeleton');
     
+    const heroData = data || AI_NEWS_DATA?.hero || { title: 'AI Pulse 2026', summary: '情报引擎正在搜索中...', url: '#' };
+    
+    if (instant) {
+        heroTitle.textContent = heroData.title;
+        heroSummary.textContent = heroData.summary;
+        if (heroLink) heroLink.onclick = () => window.open(heroData.url, '_blank');
+        return;
+    }
+
     // Smooth transition
     heroTitle.style.opacity = '0';
     heroSummary.style.opacity = '0';
-    if (heroLink) heroLink.style.opacity = '0';
     
     setTimeout(() => {
-        const heroData = AI_NEWS_DATA?.hero || { title: 'AI Pulse 2026', summary: '情报引擎正在搜索中...', url: '#' };
         heroTitle.textContent = heroData.title;
         heroSummary.textContent = heroData.summary;
-        
-        if (heroLink) {
-            heroLink.onclick = () => window.open(heroData.url, '_blank');
-            heroLink.style.opacity = '1';
-        }
-        
+        if (heroLink) heroLink.onclick = () => window.open(heroData.url, '_blank');
         heroTitle.style.opacity = '1';
         heroSummary.style.opacity = '1';
     }, 300);
 }
 
+// Helper function to create a trend card element
+function createTrendCard(item, index, instant = false) {
+    const card = document.createElement('div');
+    card.className = 'glass-card trend-card';
+    if (!instant) { // Only apply animation delay if not instant
+        card.style.animationDelay = `${index * 0.1}s`;
+    }
+    
+    card.innerHTML = `
+        <div class="trend-meta">
+            <span class="category">${item.category}</span>
+            <span class="impact-tag tag-${getImpactClass(item.impact)}">${item.impact}</span>
+        </div>
+        <h3 class="trend-title">${item.title}</h3>
+        <p class="trend-summary">${item.summary}</p>
+        <div class="card-footer">
+            <span class="priority-indicator">热度指数: ${item.priority}</span>
+            <a href="${item.url}" target="_blank" class="source-btn" onclick="event.stopPropagation()">
+                <span class="source-icon">🔗</span> 查看原文
+            </a>
+        </div>
+    `;
+    
+    // Add click listener for modal
+    card.addEventListener('click', () => {
+        openModal(item);
+    });
+    return card;
+}
+
 // Render Trends Grid with Skeleton & Filter Support
-function renderTrends(isLoading = false, filterCategory = 'all') {
+function renderTrends(isLoading = false, filterCategory = 'all', instant = false) {
     const grid = document.getElementById('trends-grid');
     if (!grid) return;
-    grid.innerHTML = '';
-
+    
     if (isLoading) {
-        // ... (skeleton logic remains same)
+        grid.innerHTML = '';
         for (let i = 0; i < 9; i++) {
             const skeleton = document.createElement('div');
             skeleton.className = 'glass-card trend-card skeleton-loading';
@@ -418,8 +449,18 @@ function getImpactClass(impact) {
 // Kimi API Integration (Now via Backend Proxy)
 async function fetchNewsFromKimi(apiKey, force = false) {
     console.log('AI Analyst is working...');
-    renderHero(true);
-    renderTrends(true);
+    
+    // Only show skeletons if we have NO data at all
+    const hasData = AI_NEWS_DATA && AI_NEWS_DATA.trends && AI_NEWS_DATA.trends.length > 0;
+    
+    if (!hasData || force) {
+        renderHero(true);
+        renderTrends(true);
+    } else {
+        // Show a subtle sync status instead of blocking skeletons
+        const statusText = document.querySelector('.status-text');
+        if (statusText) statusText.textContent = '🔄 正在同步云端最新资讯...';
+    }
 
     try {
         const url = force ? `/api/news?force=true&t=${Date.now()}` : `/api/news?t=${Date.now()}`;
