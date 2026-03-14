@@ -431,6 +431,8 @@ async function fetchNewsFromKimi(apiKey) {
         const dataSource = response.headers.get('x-data-source');
         if (dataSource) {
             console.log(`📊 Data Source: ${dataSource}`);
+            const missReason = response.headers.get('x-cache-miss-reason');
+            if (missReason) console.log(`ℹ️ Cache Miss Reason: ${missReason}`);
         }
 
         // Handle both proxy direct JSON and Moonshot direct format

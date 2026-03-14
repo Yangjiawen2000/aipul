@@ -29,14 +29,15 @@ export default async function handler(req, res) {
                 res.setHeader('x-data-source', 'Redis-Global-Pool');
                 return res.status(200).json(cachedData);
             }
+            res.setHeader('x-cache-miss-reason', !cachedData ? 'Empty-Cache' : 'Expired');
         } catch (kvError) {
+            res.setHeader('x-cache-miss-reason', 'KV-Error');
             console.warn('Vercel KV configured but failing.', kvError.message);
         }
     } else {
+        res.setHeader('x-data-source', 'Kimi-AI-Live (KV-Not-Configured)');
         console.warn('Vercel KV environment variables not found. Skipping Content Pool.');
     }
-
-    res.setHeader('x-data-source', 'Kimi-AI-Live');
 
     // 2. Security Check: API Key must be set in Vercel Environment Variables
     const apiKey = process.env.KIMI_API_KEY;
@@ -91,10 +92,16 @@ export default async function handler(req, res) {
         if (jsonMatch) {
             const freshData = JSON.parse(jsonMatch[0]);
             
-            // Update Global Pool (Async - only if KV is configured)
+            // Update Global Pool
             if (process.env.KV_REST_API_URL) {
-                kv.set(GLOBAL_CACHE_KEY, freshData).catch(e => console.error('KV Set Error:', e));
-                kv.set(GLOBAL_CACHE_KEY + '_time', Date.now()).catch(e => console.error('KV Time Set Error:', e));
+                console.log('Writing to Global Content Pool (Redis)...');
+                try {
+                    await kv.set(GLOBAL_CACHE_KEY, freshData);
+                    await kv.set(GLOBAL_CACHE_KEY + '_time', Date.now());
+                    console.log('KV Update Success.');
+                } catch (e) {
+                    console.error('KV Storage Error:', e.message);
+                }
             }
             
             return res.status(200).json(freshData);
