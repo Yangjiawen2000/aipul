@@ -23,6 +23,7 @@ let AI_NEWS_DATA = {
 // Initialize the Dashboard
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Initial Load: Check LocalStorage for instant display
+    const cachedData = localStorage.getItem('ai_pulse_cache');
     if (cachedData) {
         console.log('🚀 Loading from LocalStorage Cache...');
         try {
