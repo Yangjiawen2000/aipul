@@ -1,4 +1,5 @@
 // Vercel Serverless Function: Agentic Backend Proxy for Kimi API (v2)
+import { kv } from '@vercel/kv';
 
 // 1. Tool Definition for Kimi (Using Native $web_search)
 const tools = [
@@ -25,6 +26,23 @@ export default async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: "Missing API Key" });
 
     console.log('[API/NEWS] Starting Kimi Request...');
+
+    const CACHE_KEY = 'ai_pulse_news_v2';
+    
+    // 5. Try Cache First (Unless Forced)
+    try {
+        if (!forceRefresh) {
+            const cached = await kv.get(CACHE_KEY);
+            if (cached) {
+                console.log('[API/NEWS] Serving from Cloud Cache');
+                res.setHeader('x-data-source', 'Vercel-KV-Cache');
+                return res.status(200).json(cached);
+            }
+        }
+    } catch (cacheErr) {
+        console.warn('[API/NEWS] Cache Read Error:', cacheErr.message);
+        // Continue to fresh fetch
+    }
 
     const systemPrompt = `你是一个 2026 年的顶级 AI 行业主理人。
     你的职责是：
@@ -160,6 +178,15 @@ export default async function handler(req, res) {
             }
 
             res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
+            
+            // 6. Async Update Cache
+            try {
+                await kv.set(CACHE_KEY, freshData, { ex: 3600 }); // Cache for 1 hour
+                console.log('[API/NEWS] Cloud Cache Updated');
+            } catch (cacheErr) {
+                console.warn('[API/NEWS] Cache Write Error:', cacheErr.message);
+            }
+
             return res.status(200).json(freshData);
         }
         throw new Error("Invalid Agent Output");
