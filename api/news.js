@@ -14,19 +14,26 @@ export default async function handler(req, res) {
 
     // 1. Global Content Pool (Redis / Vercel KV)
     let cachedData = null;
-    try {
-        cachedData = await kv.get(GLOBAL_CACHE_KEY);
-        const lastUpdate = await kv.get(GLOBAL_CACHE_KEY + '_time');
-        const now = Date.now();
-
-        // If we have fresh enough data, serve it instantly!
-        if (cachedData && lastUpdate && (now - lastUpdate < CACHE_DURATION)) {
-            console.log('Serving from Global Content Pool...');
-            res.setHeader('x-data-source', 'Redis-Global-Pool');
-            return res.status(200).json(cachedData);
+    // Only attempt KV if the environment variables are configured
+    const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+    
+    if (hasKV) {
+        try {
+            cachedData = await kv.get(GLOBAL_CACHE_KEY);
+            const lastUpdate = await kv.get(GLOBAL_CACHE_KEY + '_time');
+            const now = Date.now();
+    
+            // If we have fresh enough data, serve it instantly!
+            if (cachedData && lastUpdate && (now - lastUpdate < CACHE_DURATION)) {
+                console.log('Serving from Global Content Pool...');
+                res.setHeader('x-data-source', 'Redis-Global-Pool');
+                return res.status(200).json(cachedData);
+            }
+        } catch (kvError) {
+            console.warn('Vercel KV configured but failing.', kvError.message);
         }
-    } catch (kvError) {
-        console.warn('Vercel KV not configured or failing. Falling back to live fetch.', kvError.message);
+    } else {
+        console.warn('Vercel KV environment variables not found. Skipping Content Pool.');
     }
 
     res.setHeader('x-data-source', 'Kimi-AI-Live');
@@ -84,9 +91,11 @@ export default async function handler(req, res) {
         if (jsonMatch) {
             const freshData = JSON.parse(jsonMatch[0]);
             
-            // Update Global Pool (Async - don't block response)
-            kv.set(GLOBAL_CACHE_KEY, freshData).catch(e => console.error('KV Set Error:', e));
-            kv.set(GLOBAL_CACHE_KEY + '_time', Date.now()).catch(e => console.error('KV Time Set Error:', e));
+            // Update Global Pool (Async - only if KV is configured)
+            if (process.env.KV_REST_API_URL) {
+                kv.set(GLOBAL_CACHE_KEY, freshData).catch(e => console.error('KV Set Error:', e));
+                kv.set(GLOBAL_CACHE_KEY + '_time', Date.now()).catch(e => console.error('KV Time Set Error:', e));
+            }
             
             return res.status(200).json(freshData);
         } else {
