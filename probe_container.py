@@ -9,9 +9,13 @@ def probe_container():
         # Standard fetch (should hit Redis)
         resp = requests.get(PROD_URL)
         source = resp.headers.get('x-data-source', 'Unknown')
+        debug_cache = resp.headers.get('x-debug-cache', 'N/A')
+        debug_update = resp.headers.get('x-debug-cache-update', 'N/A')
         
         print(f"HTTP Status: {resp.status_code}")
         print(f"Data Source: {source}")
+        print(f"Debug Cache: {debug_cache}")
+        print(f"Debug Update: {debug_update}")
         
         if resp.status_code == 200:
             data = resp.json()
