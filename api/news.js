@@ -44,11 +44,20 @@ export default async function handler(req, res) {
         // Continue to fresh fetch
     }
 
-    const systemPrompt = `你是一个顶级 AI 行业主理人。直接且立即调用 web_search 搜索 2026年3月 AI 动态。`;
+    const systemPrompt = `你是一个顶级 AI 行业主理人。调取 web_search 搜索 2026年3月 AI 动态。
+    基于搜索结果，筛选 6 条最具热度和影响力的动态，按热度降序排列。
+    必须直接输出如下 JSON 格式：
+    {
+      "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
+      "trends": [
+        { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
+      ]
+    }
+    分类限选：[大模型, 机器人, 算力芯片, 多模态, 智驾, 安全治理, 其他]`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: "搜索并整理今日 6 条热度最高的 AI 行业动态。立即搜索，不要长考。" }
+        { role: "user", content: "搜索并整理今日 6 条热度最高的 AI 行业动态。直接输出合规 JSON。不要长考。" }
     ];
 
     try {
