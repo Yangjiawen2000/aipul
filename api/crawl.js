@@ -9,11 +9,15 @@ export default async function handler(req, res) {
     }
 
     try {
-        console.log(`Crawling: ${url}`);
+        console.log(`Crawling via Jina Reader: ${url}`);
         
-        const response = await fetch(url, {
+        // Use r.jina.ai as a specialized reader proxy (Free & High Success Rate)
+        const jinaUrl = `https://r.jina.ai/${url}`;
+        
+        const response = await fetch(jinaUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'X-Return-Format': 'html', // Ask for HTML
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1'
             }
         });
 

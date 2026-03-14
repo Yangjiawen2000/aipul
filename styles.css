@@ -521,28 +521,52 @@ h1 {
 
 .reader-mode-content {
     color: var(--text-primary);
-    line-height: 1.8;
-    font-size: 1.05rem;
+    line-height: 1.9;
+    font-size: 1.15rem;
     margin-top: 1.5rem;
+    font-family: 'Inter', -apple-system, sans-serif;
+    letter-spacing: -0.01em;
 }
 
 .reader-mode-content p {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
 }
 
 .reader-mode-content h1, 
 .reader-mode-content h2, 
 .reader-mode-content h3 {
-    margin: 2rem 0 1rem 0;
+    margin: 2.5rem 0 1.2rem 0;
     color: #fff;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
+
+.reader-mode-content h2 { font-size: 1.6rem; border-left: 4px solid var(--accent-color); padding-left: 1rem; }
 
 .reader-mode-content img {
     max-width: 100%;
     height: auto;
-    border-radius: 12px;
-    margin: 1.5rem 0;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border-radius: 16px;
+    margin: 2rem 0;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.reader-mode-content a {
+    color: var(--accent-color);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--accent-color);
+    transition: all 0.3s ease;
+}
+
+.reader-mode-content blockquote {
+    background: rgba(255,255,255,0.03);
+    border-left: 4px solid var(--accent-color);
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+    font-style: italic;
+    border-radius: 4px 16px 16px 4px;
 }
 
 .crawl-error {
@@ -641,6 +665,34 @@ h1 {
     padding: 4rem 2rem;
     color: var(--text-secondary);
     border-top: 1px solid var(--card-border);
+}
+
+.crawl-error-modern {
+    padding: 2rem 0;
+    text-align: center;
+}
+
+.error-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.error-msg {
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.fallback-content {
+    font-size: 1.25rem;
+    line-height: 1.8;
+    color: #fff;
+    font-style: italic;
+    font-family: 'Outfit', sans-serif;
 }
 
 /* News Source Buttons */

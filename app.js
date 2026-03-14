@@ -320,12 +320,15 @@ function openModal(data) {
     modalBody.innerHTML = `<div class="article-loading">正在为您抓取深度内容...</div>`;
     modalPriority.textContent = data.priority;
     
-    // Update Source Link in Modal
-    if (!modal.querySelector('.modal-footer')) {
-        modalFooter.className = 'modal-footer';
-        modal.querySelector('.modal-content').appendChild(modalFooter);
+    // Update Source Link in Modal (without overwriting priority)
+    let sourceLink = modal.querySelector('.modal-source-link');
+    if (!sourceLink) {
+        sourceLink = document.createElement('div');
+        sourceLink.className = 'modal-source-link';
+        modalFooter.appendChild(sourceLink);
     }
-    modalFooter.innerHTML = `
+    
+    sourceLink.innerHTML = `
         <a href="${data.url}" target="_blank" class="source-btn" style="width: 100%; justify-content: center; margin-top: 1.5rem; font-size: 0.9rem; opacity: 0.7;">
             阅读网页原文 <span class="source-icon">→</span>
         </a>
@@ -357,34 +360,46 @@ async function fetchArticleContent(url, container) {
             throw new Error('Crawl failed');
         }
     } catch (error) {
+        console.error('Crawl failed, showing fallback summary.');
+        const originalTrend = AI_NEWS_DATA.trends.find(t => t.url === url) || AI_NEWS_DATA.hero;
+        
         container.innerHTML = `
-            <div class="crawl-error">
-                <p>抱歉，该网页开启了防爬设置，无法直接在该页面阅读。</p>
-                <div class="p-summary">${AI_NEWS_DATA.trends.find(t => t.url === url)?.summary || ''}</div>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem;">提示：您可以点击下方的“阅读网页原文”去查看。</p>
+            <div class="crawl-error-modern">
+                <div class="error-glass">
+                    <p class="error-msg">⚠️ 此来源受限，已切换至“AI 摘要模式”</p>
+                    <div class="fallback-content">
+                        ${originalTrend.summary}
+                    </div>
+                </div>
             </div>
         `;
     }
 }
 
 function cleanCrawledContent(html) {
-    // Basic heuristics to find the most "content-looking" part of the HTML
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // Remove known noise
-    const noiseSelectors = 'script, style, nav, footer, header, ads, .ads, .sidebar, #comments';
+    // Remove unwanted elements
+    const noiseSelectors = 'script, style, nav, footer, header, ads, .ads, .sidebar, #comments, .comments, iframe, .social-share';
     doc.querySelectorAll(noiseSelectors).forEach(el => el.remove());
 
-    // Try to find the article body (heuristically)
-    const content = doc.querySelector('article') || doc.querySelector('.article-content') || doc.querySelector('main') || doc.querySelector('.content') || doc.body;
+    // Try to find the most meaningful content block
+    let content = doc.querySelector('article') || 
+                  doc.querySelector('.article-content') || 
+                  doc.querySelector('.post-content') ||
+                  doc.querySelector('main') || 
+                  doc.querySelector('#content') ||
+                  doc.body;
     
-    // Clean up images - ensure they don't break layout
-    content.querySelectorAll('img').forEach(img => {
-        img.style.maxWidth = '100%';
-        img.style.height = 'auto';
-        img.style.borderRadius = '8px';
-        img.style.marginTop = '1rem';
+    // If it's the body, try one more time for deep nested main content
+    if (content === doc.body && doc.querySelector('div[id*="content"], div[class*="content"]')) {
+        content = doc.querySelector('div[id*="content"], div[class*="content"]');
+    }
+
+    // Modern clean-up for standard tags
+    content.querySelectorAll('p, h1, h2, h3, h4, li, blockquote').forEach(el => {
+        el.style.all = 'revert'; // Reset any inline styles from original site
     });
 
     return content.innerHTML;
