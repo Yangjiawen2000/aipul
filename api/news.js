@@ -4,43 +4,18 @@ import { kv } from '@vercel/kv';
 const GLOBAL_CACHE_KEY = 'ai_pulse_data_pool_v2'; // Bump version for 2026/Agentic
 const CACHE_DURATION = 60 * 60 * 1000; 
 
-// 1. Tool Definition for Kimi
+// 1. Tool Definition for Kimi (Using Native $web_search)
 const tools = [
   {
-    type: "function",
+    type: "builtin_function",
     function: {
-      name: "web_search",
-      description: "搜索实时科技新闻、AI 突破和 2026 年行业动态。返回网页摘要和链接。",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "搜索关键词（如：GPT-6 发布的最新进展, 2026 AI 芯片突破）" }
-        },
-        required: ["query"]
-      }
+      name: "$web_search"
     }
   }
 ];
 
-// 2. Skill implementation (Jina Search)
-async function performWebSearch(query) {
-    console.log(`Executing Skill: Web Search for "${query}"`);
-    try {
-        const response = await fetch(`https://s.jina.ai/${encodeURIComponent(query)}`, {
-            headers: { 'Accept': 'application/json' }
-        });
-        const result = await response.json();
-        // Return only relevant snippets to stay within token limits
-        return JSON.stringify(result.data.slice(0, 5).map(item => ({
-            title: item.title,
-            snippet: item.description,
-            url: item.url
-        })));
-    } catch (e) {
-        console.error('Search Skill Failed:', e.message);
-        return "搜索功能暂时不可用，请基于你的知识存储回答最新资讯，但务必标注当前时间线。";
-    }
-}
+// 2. Note: Custom Skill implementation replaced by Kimi Native Search
+// Content for tool response is now just the arguments from the model as per doc.
 
 export default async function handler(req, res) {
     if (req.method === 'HEAD') return res.status(200).end();
@@ -88,7 +63,7 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "kimi-k2.5", // Aligned with Official Doc
+                model: "kimi-k2.5", 
                 messages: messages,
                 tools: tools,
                 tool_choice: "auto"
@@ -104,25 +79,23 @@ export default async function handler(req, res) {
 
         let message = result.choices[0].message;
 
-        // Step 2: Handle Tool Calls (Multi-turn Agent)
+        // Step 2: Handle Native Tool Calls (Multi-turn Agent)
         if (message.tool_calls) {
-            messages.push(message); // Kimi's tool call request - PUSH ONCE
+            messages.push(message); 
             
             for (const toolCall of message.tool_calls) {
-                if (toolCall.function.name === "web_search") {
-                    const args = JSON.parse(toolCall.function.arguments);
-                    const searchResults = await performWebSearch(args.query);
-                    
+                if (toolCall.function.name === "$web_search") {
+                    // For builtin $web_search, content must be the original arguments string
                     messages.push({
                         role: "tool",
                         tool_call_id: toolCall.id,
-                        name: "web_search",
-                        content: searchResults
+                        name: "$web_search",
+                        content: toolCall.function.arguments 
                     });
                 }
             }
 
-            // Step 3: Get the final synthesized response from Kimi
+            // Step 3: Get final synthesis using JSON Mode
             response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -130,8 +103,9 @@ export default async function handler(req, res) {
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "kimi-k2.5", // Aligned with Official Doc
-                    messages: messages
+                    model: "kimi-k2.5",
+                    messages: messages,
+                    response_format: { type: "json_object" } // Enable JSON Mode
                 })
             });
             result = await response.json();
