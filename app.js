@@ -8,15 +8,15 @@ const AI_NEWS_DATA = {
         url: "https://openai.com"
     },
     trends: [
-        { id: 1, category: "机器人学", title: "Figure 03 发布：搭载具身智能 2.0", summary: "新型仿人机器人展示了极自然的物体操纵能力，感知大幅增强。", impact: "重大影响", priority: 9, url: "https://figure.ai" },
-        { id: 2, category: "芯片/算力", title: "NVIDIA Blackwell B200 正式交付", summary: "全球云服务器厂商开始部署最新 GPU，算力较前代提升数倍。", impact: "核心突破", priority: 10, url: "https://nvidia.com" },
+        { id: 1, category: "机器人", title: "Figure 03 发布：搭载具身智能 2.0", summary: "新型仿人机器人展示了极自然的物体操纵能力，感知大幅增强。", impact: "重大影响", priority: 9, url: "https://figure.ai" },
+        { id: 2, category: "算力芯片", title: "NVIDIA Blackwell B200 正式交付", summary: "全球云服务器厂商开始部署最新 GPU，算力较前代提升数倍。", impact: "核心突破", priority: 10, url: "https://nvidia.com" },
         { id: 3, category: "多模态", title: "Sora 2.0 开启定向邀测", summary: "新版解决物理模拟难题，视频连贯性达到电影级。", impact: "显著进步", priority: 7, url: "https://openai.com/sora" },
-        { id: 4, category: "开源社区", title: "Llama 4 性能解析：对标商业顶尖", summary: "Meta 内测开源模型性能已完全对标商业闭源模型。", impact: "重大影响", priority: 8, url: "https://meta.ai" },
-        { id: 5, category: "生物 AI", title: "AlphaFold 3 预测蛋白质全复合体", summary: "新药研发筛选时间从数月缩短至数天，生物计算大飞跃。", impact: "重大影响", priority: 8, url: "https://deepmind.google" },
-        { id: 6, category: "智能驾驶", title: "FSD V13 开启全自动驾驶新纪元", summary: "全新端到端模型实现了在复杂城区环境下的零干预驾驶。", impact: "显著进步", priority: 8, url: "https://tesla.com" },
-        { id: 7, category: "量子计算", title: "谷歌量子处理器实现千比特纠缠", summary: "纠错能力首次超越物理衰减，大规模量子计算初现曙光。", impact: "核心突破", priority: 9, url: "https://quantum.google" },
-        { id: 8, category: "脑机接口", title: "Neuralink 完成第二例人体植入", summary: "患者成功通过意念操控外部设备，响应速度提升 40%。", impact: "重大影响", priority: 7, url: "https://neuralink.com" },
-        { id: 9, category: "AI 安全", title: "全球签署《AI 治理公约》", summary: "100 余国达成共识，建立联合审查机制，确保 AI 安全可控。", impact: "重大影响", priority: 6, url: "https://un.org" }
+        { id: 4, category: "大模型", title: "Llama 4 性能解析：对标商业顶尖", summary: "Meta 内测开源模型性能已完全对标商业闭源模型。", impact: "重大影响", priority: 8, url: "https://meta.ai" },
+        { id: 5, category: "其他", title: "AlphaFold 3 预测蛋白质全复合体", summary: "新药研发筛选时间从数月缩短至数天，生物计算大飞跃。", impact: "重大影响", priority: 8, url: "https://deepmind.google" },
+        { id: 6, category: "智驾", title: "FSD V13 开启全自动驾驶新纪元", summary: "全新端到端模型实现了在复杂城区环境下的零干预驾驶。", impact: "显著进步", priority: 8, url: "https://tesla.com" },
+        { id: 7, category: "算力芯片", title: "谷歌量子处理器实现千比特纠缠", summary: "纠错能力首次超越物理衰减，大规模量子计算初现曙光。", impact: "核心突破", priority: 9, url: "https://quantum.google" },
+        { id: 8, category: "其他", title: "Neuralink 完成第二例人体植入", summary: "患者成功通过意念操控外部设备，响应速度提升 40%。", impact: "重大影响", priority: 7, url: "https://neuralink.com" },
+        { id: 9, category: "安全治理", title: "全球签署《AI 治理公约》", summary: "100 余国达成共识，建立联合审查机制，确保 AI 安全可控。", impact: "重大影响", priority: 6, url: "https://un.org" }
     ]
 };
 
