@@ -44,24 +44,11 @@ export default async function handler(req, res) {
         // Continue to fresh fetch
     }
 
-    const systemPrompt = `你是一个 2026 年的顶级 AI 行业主理人。
-    你的职责是：
-    1. 使用 web_search 技能搜索此时此刻（2026年3月）真实的世界动态。
-    2. 基于搜索到的事实，筛选出 6 条最具影响力和高热度的动态，并按热度指数 (priority) 从高到低排序。
-    3. 直接返回结果，不要任何开场白或解释。
-    
-    JSON 格式要求：
-    {
-      "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
-      "trends": [
-        { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
-      ]
-    }
-    分类限选：[大模型, 机器人, 算力芯片, 多模态, 智驾, 安全治理, 其他]`;
+    const systemPrompt = `你是一个顶级 AI 行业主理人。直接且立即调用 web_search 搜索 2026年3月 AI 动态。`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: "返回 6 条最高热度的 AI 行业动态并生成 JSON。保持极简。不要深度长考。" }
+        { role: "user", content: "搜索并整理今日 6 条热度最高的 AI 行业动态。立即搜索，不要长考。" }
     ];
 
     try {

@@ -418,77 +418,67 @@ function getImpactClass(impact) {
 // Kimi API Integration (Now via Backend Proxy)
 async function fetchNewsFromKimi(apiKey, force = false) {
     console.log('AI Analyst is working...');
-    
-    // Show Loading state
     renderHero(true);
     renderTrends(true);
 
     try {
-        let response;
+        const url = force ? '/api/news?force=true' : '/api/news';
+        console.log(`Using Backend Proxy (${force ? 'Force Refresh' : 'Standard Fetch'})...`);
         
-        // If no apiKey is provided via parameter, try the public proxy endpoint
-        if (!apiKey) {
-            const url = force ? '/api/news?force=true' : '/api/news';
-            console.log(`Using Backend Proxy (${force ? 'Force Refresh' : 'Standard Fetch'})...`);
-            response = await fetch(url);
-        } else {
-            // Original Direct Mode (for local debugging or private use)
-            console.log('Using Direct Key Mode...');
-            const systemPrompt = `你是一个拥有全球视野的自主 AI 行业分析师... (Prompt Refinement inside Function)`; 
-            // Note: Keeping direct mode as fallback for local dev
-            response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "moonshot-v1-8k",
-                    messages: [
-                        { role: "system", content: "你是一个专业的 AI 行业分析师。请以 JSON 格式输出 9 条最新的 AI 动态。" },
-                        { role: "user", content: "请提供最新的 AI 行业动态。" }
-                    ],
-                    temperature: 0.3
-                })
-            });
-        }
+        const response = await fetch(url);
+        const dataSource = response.headers.get('x-data-source') || 'Unknown';
+        const freshData = await response.json();
 
-        const result = await response.json();
-        
         if (!response.ok) {
-            console.error('❌ AI Fetch Logic Error:', result);
-            throw new Error(result.error || 'Fetch Failed');
+            console.error('❌ AI Fetch Logic Error:', freshData);
+            throw new Error(freshData.error || 'Fetch Failed');
         }
 
-        const dataSource = response.headers.get('x-data-source');
-        if (dataSource) {
-            console.log(`📊 Data Source: ${dataSource}`);
-            const missReason = response.headers.get('x-cache-miss-reason');
-            if (missReason) console.log(`ℹ️ Cache Miss Reason: ${missReason}`);
-        }
+        console.log(`📊 Data Source: ${dataSource}`);
+        updateWidgetData(freshData, dataSource);
 
-        // Handle both proxy direct JSON and Moonshot direct format
-        let freshData = result.choices ? JSON.parse(result.choices[0].message.content.match(/\{[\s\S]*\}/)[0]) : result;
-        
-        updateWidgetData(freshData);
+        if (freshData) {
+            localStorage.setItem('ai_pulse_cache', JSON.stringify(freshData));
+            console.log('💾 Saved fresh data to LocalStorage.');
+        }
     } catch (error) {
         console.error('Data Fetch Error:', error);
-        // Fallback to mock data if something breaks
-        renderHero();
-        renderTrends();
+        updateWidgetData(null, 'Error');
     }
 }
 
-function updateWidgetData(newData) {
-    // Update global object
-    AI_NEWS_DATA = newData;
+function updateWidgetData(data, source = 'AI-Discovery') {
+    const statusText = document.querySelector('.status-text');
+    
+    if (!data) {
+        // Fallback to minimal data and show error status
+        if (statusText) statusText.textContent = `系统状态: 数据获取延迟`;
+        renderHero();
+        renderTrends();
+        return;
+    }
+
+    // Update global reference if used
+    if (typeof AI_NEWS_DATA !== 'undefined') {
+        AI_NEWS_DATA = data;
+    }
+    
+    // Update live status text to show source
+    if (statusText) {
+        if (source.includes('Cache')) {
+            statusText.textContent = `数据源: 容器缓存 (Redis)`;
+        } else if (source.includes('Discovery') || source.includes('Kimi')) {
+            statusText.textContent = `数据源: AI 实时全网发现`;
+        } else {
+            statusText.textContent = `数据源: ${source}`;
+        }
+    }
 
     // Save to LocalStorage for next time
-    localStorage.setItem('ai_pulse_cache', JSON.stringify(newData));
+    localStorage.setItem('ai_pulse_cache', JSON.stringify(data));
     console.log('💾 Saved fresh data to LocalStorage.');
     
     // Re-render UI
-    renderHero();
     renderTrends();
     updateDate();
     
