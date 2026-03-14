@@ -106,12 +106,13 @@ export default async function handler(req, res) {
 
         // Step 2: Handle Tool Calls (Multi-turn Agent)
         if (message.tool_calls) {
+            messages.push(message); // Kimi's tool call request - PUSH ONCE
+            
             for (const toolCall of message.tool_calls) {
                 if (toolCall.function.name === "web_search") {
                     const args = JSON.parse(toolCall.function.arguments);
                     const searchResults = await performWebSearch(args.query);
                     
-                    messages.push(message); // Kimi's tool call request
                     messages.push({
                         role: "tool",
                         tool_call_id: toolCall.id,
