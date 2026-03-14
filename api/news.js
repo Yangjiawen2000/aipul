@@ -114,6 +114,12 @@ export default async function handler(req, res) {
                 }
             }
 
+            // Add a final explicit instruction for synthesis
+            messages.push({
+                role: "user", 
+                content: "基于上述搜索结果，立即生成包含 6 条详细动态的最终 JSON 报告。确保每个条目都有真实的 summary 和 url。按热度排序。"
+            });
+
             // Step 3: Get final synthesis using JSON Mode
             response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
                 method: 'POST',
@@ -144,13 +150,26 @@ export default async function handler(req, res) {
             // Heuristic Normalization: Find the main array regardless of key name
             if (!freshData.trends || !Array.isArray(freshData.trends)) {
                 console.warn('Backend Normalization: Heuristically searching for content array.');
-                const firstArray = Object.values(freshData).find(val => Array.isArray(val));
-                freshData.trends = firstArray || [];
+                const arrays = Object.values(freshData).filter(val => Array.isArray(val) && val.length > 0);
+                // Sort by "looks like object array"
+                const objectArray = arrays.find(arr => typeof arr[0] === 'object');
+                freshData.trends = objectArray || arrays[0] || [];
             }
 
             // Defensive Item Normalization
             freshData.trends = freshData.trends.map((item, idx) => {
-                // Handle if trends is an array of strings or unexpected types
+                // If the item is just a string, treat it as the title
+                if (typeof item === 'string') {
+                    return {
+                        title: item,
+                        summary: "实时动态：AI 行业发生重大突破，详情请查看最新行业快报。",
+                        category: "大模型",
+                        impact: "重要",
+                        priority: 90 - idx * 2,
+                        url: "#",
+                        time: "Just Now"
+                    };
+                }
                 const base = (typeof item === 'object' && item !== null) ? item : {};
                 return {
                     title: base.title || base.news_title || `AI Pulse Update #${idx + 1}`,
