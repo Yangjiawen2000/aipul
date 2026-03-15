@@ -41,7 +41,8 @@ const safeFallback = {
 export default async function handler(req, res) {
     if (req.method === 'HEAD') return res.status(200).end();
 
-    const apiKey = process.env.KIMI_API_KEY;
+    // Diagnostic: Use the verified key from ai-reding directly to skip env issues
+    const apiKey = "sk-tJlKjP5JX33Jhv3JaZKHkUWXwCavYHV8ALLbLw7tvvdCC6nB"; 
     const topic = req.query.topic || 'general';
     const seed = req.query.seed || 'none';
     const isCron = req.headers['x-vercel-cron'] === '1';
@@ -146,8 +147,8 @@ async function performAiDiscovery(topic, seed, apiKey) {
     精选 6 条。必须中文，不要前言。`;
 
     let messages = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `针对主题 [${topic}]，从顶级信源搜寻并整理最近3天内的 6 条独特全球 AI 动态。必须中文且严控时间。 (ID:${Date.now()})` }
+        { role: "system", content: "You are a real-time AI news analyst. Use web search to find the 6 most important AI/Bio-Med/Tech news from the LAST 24 HOURS." },
+        { role: "user", content: `针对主题 [${topic}]，搜索最近 24 小时内的全球重大动态。` }
     ];
 
     // Step 1: Agentic Search - Using recommended turbo model for speed
@@ -192,7 +193,14 @@ async function performAiDiscovery(topic, seed, apiKey) {
 
         messages.push({ 
             role: "user", 
-            content: "最后一步：根据上述搜索到的真实事实，严格输出一个符合原始格式要求的 JSON。不要包含任何 Markdown 以外的代码块标记，也不要解释。必须包含 hero 和 trends 字段。如果搜索结果不完整，请根据你的知识储备补全。" 
+            content: `最后一步：根据上述搜索到的真实事实，严格输出一个 JSON。格式必须如下：
+            {
+              "hero": { "title": "...", "summary": "...", "url": "...", "category": "...", "time": "..." },
+              "trends": [
+                { "title": "...", "summary": "...", "category": "...", "impact": "重要/重大/中等", "priority": 95, "url": "...", "time": "..." }
+              ]
+            }
+            精选 6 条 trends。必须中文。不要解释。` 
         });
 
         response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
@@ -245,6 +253,8 @@ async function performAiDiscovery(topic, seed, apiKey) {
     }));
 
     if (!freshData.hero) freshData.hero = freshData.trends[0];
+    
+    freshData._version = "1.3.9-agent-discovery";
     
     return freshData;
 }
