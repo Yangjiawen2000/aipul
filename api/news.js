@@ -63,9 +63,11 @@ export default async function handler(req, res) {
         for (let i = 0; i < topics.length; i++) {
             const t = topics[i];
             const res = results[i];
-            if (res.status === 'fulfilled') {
+            if (res.status === 'fulfilled' && hasKV) {
                 await kv.set(`ai_pulse_news_v2_${t}`, res.value, { ex: 86400 });
                 report[t] = 'Warmed';
+            } else if (!hasKV) {
+                report[t] = 'Skipped (No KV)';
             } else {
                 report[t] = `Error: ${res.reason.message}`;
             }
@@ -74,16 +76,19 @@ export default async function handler(req, res) {
     }
 
     const CACHE_KEY = `ai_pulse_news_v2_${topic}`;
+    const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
     
-    // --- CLOUD-FIRST CACHE HIT ---
+    // --- CLOUD-FIRST CACHE HIT (OPTIONAL) ---
     try {
-        if (!forceRefresh) {
+        if (!forceRefresh && hasKV) {
             const cached = await kv.get(CACHE_KEY);
             if (cached) {
                 console.log(`[API/NEWS] Serving Topic [${topic}] from Cloud Cache`);
                 res.setHeader('x-data-source', 'Vercel-KV-Cache');
                 return res.status(200).json(cached);
             }
+        } else if (!hasKV) {
+            console.warn('[API/NEWS] KV Environment variables missing. Caching disabled.');
         }
     } catch (cacheErr) {
         console.warn(`[API/NEWS] Cache Read Error for [${topic}]:`, cacheErr.message);
@@ -94,8 +99,10 @@ export default async function handler(req, res) {
         console.log(`[API/NEWS] Performing Real-time Discovery for Topic [${topic}]...`);
         const freshData = await performAiDiscovery(topic, seed, apiKey);
         
-        // Update cache in background
-        kv.set(CACHE_KEY, freshData, { ex: 86400 }).catch(e => console.error('Cache Write Error:', e));
+        // Update cache in background (only if available)
+        if (hasKV) {
+            kv.set(CACHE_KEY, freshData, { ex: 86400 }).catch(e => console.error('Cache Write Error:', e));
+        }
         
         res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
         return res.status(200).json(freshData);
