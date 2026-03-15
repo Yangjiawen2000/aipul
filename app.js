@@ -472,7 +472,9 @@ function getImpactClass(impact) {
 // Kimi API Integration (Now via Backend Proxy)
 async function fetchNewsFromKimi(apiKey, force = false, isAppend = false) {
     
-    const hasData = AI_NEWS_DATA && AI_NEWS_DATA.trends && AI_NEWS_DATA.trends.length > 0;
+    // Correct topic-aware check
+    const topicData = AI_NEWS_DATA[currentTopic];
+    const hasData = topicData && topicData.trends && topicData.trends.length > 0;
     
     if (!isAppend && (!hasData || force)) {
         renderHero(true);
