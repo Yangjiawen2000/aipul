@@ -247,7 +247,8 @@ function renderHero(isLoading = false, data = null, instant = false) {
 
     heroContent.classList.remove('hero-skeleton');
     
-    const heroData = data || AI_NEWS_DATA?.hero || { title: 'AI Pulse 2026', summary: '情报引擎正在搜索中...', url: '#' };
+    const topicData = AI_NEWS_DATA[currentTopic] || { hero: null };
+    const heroData = data || topicData.hero || { title: 'AI Pulse 2026', summary: '情报引擎正在搜索中...', url: '#' };
     
     if (instant) {
         heroTitle.textContent = heroData.title;
@@ -476,12 +477,14 @@ async function fetchNewsFromKimi(apiKey, force = false, isAppend = false) {
     const topicData = AI_NEWS_DATA[currentTopic];
     const hasData = topicData && topicData.trends && topicData.trends.length > 0;
     
-    if (!isAppend && (!hasData || force)) {
+    // Important: Force check and data existence check must be rigorous
+    // If not appending, and we explicitly force OR we have no data at all (broken state)
+    if (!isAppend && (force || !hasData)) {
         renderHero(true);
         renderTrends(true);
     } else if (!isAppend) {
         const statusText = document.querySelector('.status-text');
-        if (statusText) statusText.textContent = '🔄 正在同步云端最新资讯...';
+        if (statusText) statusText.textContent = `🔄 正在同步 [${currentTopic}] 最新动态...`;
     }
 
     try {
