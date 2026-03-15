@@ -52,11 +52,19 @@ export default async function handler(req, res) {
     const now = new Date();
     const dateRef = now.toLocaleDateString('zh-CN');
     const seed = req.query.seed || 'none';
+    const topic = req.query.topic || 'general';
+
+    let topicInstruction = "深度搜索全球AI动态，覆盖大模型、硬件、政策等全领域。";
+    if (topic === 'biomed') {
+        topicInstruction = "专项搜索【AI在生物医学/生命科学】领域的最新进展。必须包含：最新的科研论文(Nature/Science等)、蛋白质结构预测、新药研发突破、AI医疗影像或临床新发现。";
+    } else if (topic === 'tools') {
+        topicInstruction = "专项搜索最新的【AI工具与应用】。重点关注：AI Coding编辑器(Cursor/Windsurf等)、效率工具、视频生成工具、智能Agent应用或开发者库。";
+    }
+
     const systemPrompt = `顶级AI主理人。今天是 ${dateRef}。
-    调取web_search深度搜索【最近3天内】（即 ${new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleDateString()} 至今）的全球AI动态。
-    必须严禁输出2025年或更早的信息。
-    必须覆盖不同领域：[大模型, 机器人, 算力硬件, AI工具/应用 (如AI Coding, 效率工具), 政策开源]。
-    当前搜索种子：${seed} (若非none，请发掘更多细分领域的深度动态)。
+    任务：${topicInstruction}
+    时间范围：【最近3天内】的动态。严禁过往旧闻。
+    当前搜索种子：${seed} (若非none，请发掘该主题下的更多细分动态)。
     仅输出JSON：
     {
       "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
@@ -64,11 +72,11 @@ export default async function handler(req, res) {
         { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
       ]
     }
-    精选 6 条全球热点。必须全部使用中文。不要任何前言。`;
+    精选 6 条。必须全部使用中文。不要任何前言。`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `搜索并整理最近3天内（${dateRef}前推3天）的 6 条独特全球 AI 动态。包含 AI 工具/应用。种子项: ${seed}。必须中文且严控时间。 (ID:${Date.now()})` }
+        { role: "user", content: `针对主题 [${topic}]，搜索并整理最近3天内的 6 条独特全球 AI 动态。必须中文且严控时间。 (ID:${Date.now()})` }
     ];
 
     try {

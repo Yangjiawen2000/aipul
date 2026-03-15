@@ -1,24 +1,6 @@
-// Mock Data for AI Frontiers 2026 (Updated for current timeline)
-let AI_NEWS_DATA = {
-    hero: {
-        title: "GPT-6 'Nova' 全球首测：AGI 奇点正式降临",
-        summary: "2026 年春季，OpenAI 发布了具备自主意识雏形的 Nova 模型，量子计算架构使其推理深度达到人类专家级。",
-        category: "大语言模型",
-        time: "10 mins ago",
-        url: "https://openai.com"
-    },
-    trends: [
-        { id: 1, category: "机器人", title: "Figure 03 发布：搭载具身智能 2.0", summary: "新型仿人机器人展示了极自然的物体操纵能力，感知大幅增强。", impact: "重大影响", priority: 9, url: "https://figure.ai" },
-        { id: 2, category: "算力芯片", title: "NVIDIA Blackwell B200 正式交付", summary: "全球云服务器厂商开始部署最新 GPU，算力较前代提升数倍。", impact: "核心突破", priority: 10, url: "https://nvidia.com" },
-        { id: 3, category: "多模态", title: "Sora 2.0 开启定向邀测", summary: "新版解决物理模拟难题，视频连贯性达到电影级。", impact: "显著进步", priority: 7, url: "https://openai.com/sora" },
-        { id: 4, category: "大模型", title: "Llama 4 性能解析：对标商业顶尖", summary: "Meta 内测开源模型性能已完全对标商业闭源模型。", impact: "重大影响", priority: 8, url: "https://meta.ai" },
-        { id: 5, category: "其他", title: "AlphaFold 3 预测蛋白质全复合体", summary: "新药研发筛选时间从数月缩短至数天，生物计算大飞跃。", impact: "重大影响", priority: 8, url: "https://deepmind.google" },
-        { id: 6, category: "智驾", title: "FSD V13 开启全自动驾驶新纪元", summary: "全新端到端模型实现了在复杂城区环境下的零干预驾驶。", impact: "显著进步", priority: 8, url: "https://tesla.com" },
-        { id: 7, category: "算力芯片", title: "谷歌量子处理器实现千比特纠缠", summary: "纠错能力首次超越物理衰减，大规模量子计算初现曙光。", impact: "核心突破", priority: 9, url: "https://quantum.google" },
-        { id: 8, category: "其他", title: "Neuralink 完成第二例人体植入", summary: "患者成功通过意念操控外部设备，响应速度提升 40%。", impact: "重大影响", priority: 7, url: "https://neuralink.com" },
-        { id: 9, category: "安全治理", title: "全球签署《AI 治理公约》", summary: "100 余国达成共识，建立联合审查机制，确保 AI 安全可控。", impact: "重大影响", priority: 6, url: "https://un.org" }
-    ]
-};
+// Core State
+let AI_NEWS_DATA = { trends: [], hero: null };
+let currentTopic = 'general';
 
 // Initialize the Dashboard
 document.addEventListener('DOMContentLoaded', () => {
@@ -43,20 +25,33 @@ document.addEventListener('DOMContentLoaded', () => {
     setupInfiniteScroll();
     startLiveClock();
 
-    // Category Filter logic
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterBtns.forEach(b => b.classList.remove('active'));
+    // Category/Topic Filters (Three Specialized Columns)
+    const filterContainer = document.getElementById('category-filters');
+    if (filterContainer) {
+        filterContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+
+            // Avoid double-click of same topic
+            const topic = btn.dataset.topic;
+            if (topic === currentTopic) return;
+
+            // Update UI
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const category = btn.getAttribute('data-category');
-            renderTrends(false, category);
+
+            console.log(`切换专栏: ${topic}`);
+            currentTopic = topic;
+            fetchNewsFromKimi(null, true); // Force full reload for new topic
+            
+            // Scroll back to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
-    });
+    }
 
     // Auto-refresh every 30 minutes
     setInterval(() => {
-        checkApiConnectivity();
+        fetchNewsFromKimi();
     }, 30 * 60 * 1000);
 });
 
@@ -443,7 +438,7 @@ async function fetchNewsFromKimi(apiKey, force = false, isAppend = false) {
 
     try {
         const seed = isAppend ? Math.floor(Math.random() * 1000) : 0;
-        const url = force ? `/api/news?force=true&seed=${seed}&t=${Date.now()}` : `/api/news?t=${Date.now()}`;
+        const url = force ? `/api/news?force=true&topic=${currentTopic}&seed=${seed}&t=${Date.now()}` : `/api/news?topic=${currentTopic}&t=${Date.now()}`;
         const response = await fetch(url);
         const dataSource = response.headers.get('x-data-source') || 'Unknown';
         const freshData = await response.json();
