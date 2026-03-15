@@ -172,7 +172,6 @@ async function performAiDiscovery(topic, seed, apiKey) {
         messages.push({
             role: "assistant",
             content: message.content || "",
-            reasoning_content: message.reasoning_content || undefined,
             tool_calls: message.tool_calls
         });
 
@@ -187,7 +186,10 @@ async function performAiDiscovery(topic, seed, apiKey) {
             }
         }
 
-        messages.push({ role: "user", content: "请根据上述搜索结果，严格按照要求格式输出 6 条突发动态 JSON。必须包含真实的 URL 和详细摘要。" });
+        messages.push({ 
+            role: "user", 
+            content: "最后一步：根据上述搜索到的真实事实，严格输出一个符合原始格式要求的 JSON。不要包含任何 Markdown 以外的代码块标记，也不要解释。必须包含 hero 和 trends 字段。如果搜索结果不完整，请根据你的知识储备补全。" 
+        });
 
         response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
             method: 'POST',
@@ -196,25 +198,31 @@ async function performAiDiscovery(topic, seed, apiKey) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "kimi-k2-turbo-preview", // Keep model consistent
+                model: "kimi-k2-turbo-preview",
                 messages: messages,
-                temperature: 0,
-                tools: tools, // Keep tools available
-                response_format: { type: "json_object" }
+                temperature: 0
             })
         });
         result = await response.json();
         if (!response.ok) throw new Error(`Kimi Synthesis Failed: ${JSON.stringify(result)}`);
-    } else {
-        // If no tool calls, it might have answered directly
-        console.warn('[API/NEWS] Kimi answered without search. Proceeding to parse.');
     }
 
     const finalContent = result.choices[0].message.content;
-    const jsonMatch = finalContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found in AI response");
+    console.log('[API/RAW_RESP]:', finalContent.substring(0, 100) + '...');
 
-    let freshData = JSON.parse(jsonMatch[0]);
+    const jsonMatch = finalContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+        console.error('[API/PARSE_ERROR] Raw Content:', finalContent);
+        throw new Error("No valid JSON found in AI response");
+    }
+
+    let freshData;
+    try {
+        freshData = JSON.parse(jsonMatch[0]);
+    } catch (parseExc) {
+        console.error('[API/JSON_ERROR] Failed content:', jsonMatch[0]);
+        throw new Error(`JSON Syntax Error: ${parseExc.message}`);
+    }
 
     // Normalization
     if (!freshData.trends || !Array.isArray(freshData.trends)) {
