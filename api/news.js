@@ -1,5 +1,4 @@
-// Vercel Serverless Function: Agentic Backend Proxy for Kimi API (v2)
-import { kv } from '@vercel/kv';
+// import { kv } from '@vercel/kv';
 
 // 1. Tool Definition for Kimi (Using Native $web_search)
 const tools = [
@@ -78,31 +77,26 @@ export default async function handler(req, res) {
     const CACHE_KEY = `ai_pulse_news_v2_${topic}`;
     const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
     
-    // --- CLOUD-FIRST CACHE HIT (OPTIONAL) ---
+    // --- CLOUD-FIRST CACHE HIT (DISABLED FOR DIAGNOSTIC) ---
+    /*
     try {
         if (!forceRefresh && hasKV) {
-            const cached = await kv.get(CACHE_KEY);
-            if (cached) {
-                console.log(`[API/NEWS] Serving Topic [${topic}] from Cloud Cache`);
-                res.setHeader('x-data-source', 'Vercel-KV-Cache');
-                return res.status(200).json(cached);
-            }
-        } else if (!hasKV) {
-            console.warn('[API/NEWS] KV Environment variables missing. Caching disabled.');
+            // ...
         }
-    } catch (cacheErr) {
-        console.warn(`[API/NEWS] Cache Read Error for [${topic}]:`, cacheErr.message);
-    }
+    } catch (cacheErr) { ... }
+    */
 
     // --- REAL-TIME DISCOVERY FALLBACK ---
     try {
         console.log(`[API/NEWS] Performing Real-time Discovery for Topic [${topic}]...`);
         const freshData = await performAiDiscovery(topic, seed, apiKey);
         
-        // Update cache in background (only if available)
+        // Update cache in background (DISABLED)
+        /*
         if (hasKV) {
             kv.set(CACHE_KEY, freshData, { ex: 86400 }).catch(e => console.error('Cache Write Error:', e));
         }
+        */
         
         res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
         return res.status(200).json(freshData);
