@@ -21,8 +21,21 @@ const safeFallback = {
             { title: "Kimi k2.5 皇冠模型震撼发布", summary: "具备超强推理能力与多模态搜索，深度改变 AI 探索体验。", category: "模型动态", impact: "核心", priority: 99, url: "https://www.moonshot.cn/", time: "刚刚" },
             { title: "Agentic Thinking: 思考模式成为标配", summary: "大模型不再仅仅是对话，而是具备深度复盘与工具调用的思考者。", category: "技术趋势", impact: "重大", priority: 95, url: "#", time: "刚刚" }
         ]
+    },
+    biomed: {
+        hero: { title: "AI + 生物医学：生命科学的新纪元", summary: "正在为您展示生物医学领域的先遣情报。实时分析正在队列中...", url: "#", category: "系统提示", time: "刚刚" },
+        trends: [
+            { title: "AlphaFold 3 开源社区活跃度激增", summary: "生物学家利用 AI 预测蛋白质复合物，加速药物研发进程。", category: "蛋白质科学", impact: "重大", priority: 98, url: "#", time: "刚刚" },
+            { title: "AI 驱动的癌症免疫疗法取得突破", summary: "个性化疫苗设计速度提升10倍，临床试验反馈积极。", category: "新药研发", impact: "核心", priority: 96, url: "#", time: "刚刚" }
+        ]
+    },
+    tools: {
+        hero: { title: "AI 工具箱：释放你的生产力", summary: "最硬核的 AI 工具情报已就绪。正在为您同步最新版本动态...", url: "#", category: "系统提示", time: "刚刚" },
+        trends: [
+            { title: "Cursor 0.45 版本：代码智能再升级", summary: "更深度的上下文理解，支持多模型联合推理，重塑 Coding 流程。", category: "开发者工具", impact: "核心", priority: 97, url: "#", time: "刚刚" },
+            { title: "视频生成工具 Sora/Luma 进入大规模内测", summary: "影视行业迎来变革，AI 生成内容质量逼近专业水准。", category: "创意工具", impact: "重大", priority: 92, url: "#", time: "刚刚" }
+        ]
     }
-    // ... basic fallbacks for biomed and tools could go here too
 };
 
 export default async function handler(req, res) {
@@ -157,7 +170,7 @@ async function performAiDiscovery(topic, seed, apiKey) {
     if (message.tool_calls) {
         messages.push({
             role: "assistant",
-            content: message.content || null,
+            content: message.content || "",
             reasoning_content: message.reasoning_content || undefined,
             tool_calls: message.tool_calls
         });
