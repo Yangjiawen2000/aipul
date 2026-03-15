@@ -101,10 +101,14 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error('API Error:', error.message);
         
-        // Return 200 with fallback data instead of 500
+        // Return 200 with fallback data AND the error for debugging
         res.setHeader('x-data-source', 'Server-Side-Fallback');
         const fallback = safeFallback[topic] || safeFallback['general'];
-        return res.status(200).json(fallback);
+        return res.status(200).json({
+            ...fallback,
+            _debug_error: error.message,
+            _timestamp: new Date().toISOString()
+        });
     }
 }
 
