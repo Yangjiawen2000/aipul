@@ -49,10 +49,14 @@ export default async function handler(req, res) {
         res.setHeader('x-debug-cache', `ERROR-${cacheErr.message.slice(0, 20)}`);
     }
 
+    const now = new Date();
+    const dateRef = now.toLocaleDateString('zh-CN');
     const seed = req.query.seed || 'none';
-    const systemPrompt = `顶级AI主理人。调取web_search深度搜索2026年3月全球AI动态。
-    当前搜索种子：${seed} (若非none，请避开最常见的头条，发掘更多细分领域的深度动态)。
-    必须覆盖不同领域：[大模型, 机器人, 算力硬件, 政策, 开源, 生物计算, 能源AI]。
+    const systemPrompt = `顶级AI主理人。今天是 ${dateRef}。
+    调取web_search深度搜索【最近3天内】（即 ${new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleDateString()} 至今）的全球AI动态。
+    必须严禁输出2025年或更早的信息。
+    必须覆盖不同领域：[大模型, 机器人, 算力硬件, AI工具/应用 (如AI Coding, 效率工具), 政策开源]。
+    当前搜索种子：${seed} (若非none，请发掘更多细分领域的深度动态)。
     仅输出JSON：
     {
       "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
@@ -64,7 +68,7 @@ export default async function handler(req, res) {
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `深度搜索 6 条独特的全球 AI 动态。种子项: ${seed}。必须中文。 (ID:${Date.now()})` }
+        { role: "user", content: `搜索并整理最近3天内（${dateRef}前推3天）的 6 条独特全球 AI 动态。包含 AI 工具/应用。种子项: ${seed}。必须中文且严控时间。 (ID:${Date.now()})` }
     ];
 
     try {
