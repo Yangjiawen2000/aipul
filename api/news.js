@@ -17,10 +17,16 @@ const tools = [
 export default async function handler(req, res) {
     if (req.method === 'HEAD') return res.status(200).end();
 
+    const apiKey = process.env.KIMI_API_KEY;
     const topic = req.query.topic || 'general';
     const seed = req.query.seed || 'none';
     const isCron = req.headers['x-vercel-cron'] === '1';
     const forceRefresh = req.query.force === 'true' || isCron;
+
+    if (!apiKey) {
+        console.error('[API/NEWS] Missing KIMI_API_KEY environment variable.');
+        return res.status(500).json({ error: "Server Configuration Error", message: "Missing API Key" });
+    }
 
     // --- CRON WARMING LOGIC ---
     if (isCron) {
