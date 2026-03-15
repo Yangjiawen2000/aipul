@@ -494,7 +494,10 @@ async function fetchNewsFromKimi(apiKey, force = false, isAppend = false) {
         const dataSource = response.headers.get('x-data-source') || 'Unknown';
         const freshData = await response.json();
 
-        if (!response.ok) throw new Error(freshData.error || 'Fetch Failed');
+        if (!response.ok) {
+            console.error('[API/ERROR] Detail:', freshData);
+            throw new Error(freshData.message || freshData.error || 'Fetch Failed');
+        }
 
         updateWidgetData(freshData, dataSource, isAppend);
 
