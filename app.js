@@ -1,21 +1,31 @@
 // Core State
-let AI_NEWS_DATA = { trends: [], hero: null };
+let AI_NEWS_DATA = {
+    general: { trends: [], hero: null },
+    biomed: { trends: [], hero: null },
+    tools: { trends: [], hero: null }
+};
 let currentTopic = 'general';
 
 // Initialize the Dashboard
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initial Load: Check LocalStorage for instant display
-    const cachedData = localStorage.getItem('ai_pulse_cache');
-    if (cachedData) {
-        console.log('🚀 Loading from LocalStorage Cache...');
-        try {
-            AI_NEWS_DATA = JSON.parse(cachedData);
-            // Render immediately without animation delay for instant feel
-            renderHero(false, AI_NEWS_DATA.hero, true); 
-            renderTrends(false, 'all', true); 
-        } catch (e) {
-            console.error('Local cache corrupted');
+    // 1. Initial Load: Check LocalStorage for all topics
+    const topics = ['general', 'biomed', 'tools'];
+    topics.forEach(t => {
+        const cached = localStorage.getItem(`ai_pulse_cache_${t}`);
+        if (cached) {
+            try {
+                AI_NEWS_DATA[t] = JSON.parse(cached);
+            } catch (e) {
+                console.error(`Cache corrupted for ${t}`);
+            }
         }
+    });
+
+    // Render current topic immediately
+    const initialData = AI_NEWS_DATA[currentTopic];
+    if (initialData && initialData.hero) {
+        renderHero(false, initialData.hero, true);
+        renderTrends(false, 'all', true);
     }
 
     // 2. Connectivity check -> Triggers selective backend fetch
@@ -32,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = e.target.closest('.filter-btn');
             if (!btn) return;
 
-            // Avoid double-click of same topic
             const topic = btn.dataset.topic;
             if (topic === currentTopic) return;
 
@@ -42,12 +51,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log(`切换专栏: ${topic}`);
             currentTopic = topic;
-            fetchNewsFromKimi(null, true); // Force full reload for new topic
+
+            // Instant Switch: Check if we have local data for this topic
+            const topicData = AI_NEWS_DATA[currentTopic];
+            if (topicData && topicData.hero) {
+                renderHero(false, topicData.hero, true);
+                renderTrends(false, 'all', true);
+            } else {
+                // If no data, show a quiet loading state
+                document.getElementById('trends-grid').innerHTML = '<div class="loading-ripple"></div>';
+            }
+
+            // Sync with Cloud-Buffer in background (non-force unless empty)
+            fetchNewsFromKimi(null, !topicData.hero); 
             
-            // Scroll back to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
+
+    // Modal Close Fixes
+    const closeModalBtn = document.getElementById('close-modal');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeModal);
+    }
+    
+    // Close on background click
+    const modalOverlay = document.getElementById('detail-modal');
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+    }
+
+    // Bulletproof: Global Escape key listener
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            // Also close chat if active
+            const chatWindow = document.getElementById('chat-window');
+            if (chatWindow) chatWindow.classList.remove('active');
+        }
+    });
 
     // Auto-refresh every 30 minutes
     setInterval(() => {
@@ -167,22 +211,7 @@ function addChatMessage(role, content, id = null) {
     container.scrollTop = container.scrollHeight;
 }
 
-// Real-time Cyber Clock
-function startLiveClock() {
-    const clockEl = document.getElementById('current-date');
-    if (!clockEl) return;
-
-    function updateClock() {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        clockEl.textContent = `${hours}:${minutes}:${seconds}`;
-    }
-
-    updateClock();
-    setInterval(updateClock, 1000);
-}
+// Redundant clock removed in favor of single implementation at bottom
 
 // Render Hero Section
 function renderHero(isLoading = false, data = null, instant = false) {
@@ -278,12 +307,11 @@ function renderTrends(isLoading = false, filterCategory = 'all', instant = false
     }
 
     // Filter and Sort by priority descending
-    let filteredTrends = Array.isArray(AI_NEWS_DATA?.trends) ? [...AI_NEWS_DATA.trends] : [];
-    if (filterCategory !== 'all') {
-        filteredTrends = filteredTrends.filter(item => item.category === filterCategory);
-    }
+    const topicData = AI_NEWS_DATA[currentTopic] || { trends: [] };
+    let filteredTrends = Array.isArray(topicData.trends) ? [...topicData.trends] : [];
     
-    const sortedTrends = filteredTrends.sort((a, b) => b.priority - a.priority);
+    // Sort by priority descending
+    const sortedTrends = filteredTrends.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     
     if (sortedTrends.length === 0 && !isAppend) {
         grid.innerHTML = '<p class="no-results">该分类下暂无最新动态</p>';
@@ -343,10 +371,7 @@ function openModal(data) {
         </a>
     `;
     
-    modal.style.display = 'flex';
-    setTimeout(() => {
-        modal.classList.add('active');
-    }, 10);
+    modal.classList.add('active');
 
     // Trigger Crawler
     fetchArticleContent(data.url, modalBody);
@@ -370,7 +395,8 @@ async function fetchArticleContent(url, container) {
         }
     } catch (error) {
         console.error('Crawl failed, showing fallback summary.');
-        const originalTrend = AI_NEWS_DATA.trends.find(t => t.url === url) || AI_NEWS_DATA.hero;
+        const topicData = AI_NEWS_DATA[currentTopic];
+        const originalTrend = topicData.trends.find(t => t.url === url) || topicData.hero;
         
         container.innerHTML = `
             <div class="crawl-error-modern">
@@ -448,7 +474,7 @@ async function fetchNewsFromKimi(apiKey, force = false, isAppend = false) {
         updateWidgetData(freshData, dataSource, isAppend);
 
         if (freshData && !isAppend) {
-            localStorage.setItem('ai_pulse_cache', JSON.stringify(freshData));
+            localStorage.setItem(`ai_pulse_cache_${currentTopic}`, JSON.stringify(freshData));
         }
     } catch (error) {
         console.error('Data Fetch Error:', error);
@@ -466,23 +492,23 @@ function updateWidgetData(data, source = 'AI-Discovery', isAppend = false) {
         return;
     }
 
-    // Update global reference
+    // Update global reference for the current topic
     if (isAppend) {
         // Append unique items only
-        const existingTitles = new Set(AI_NEWS_DATA.trends.map(t => t.title));
+        const existingTitles = new Set(AI_NEWS_DATA[currentTopic].trends.map(t => t.title));
         const newItems = (data.trends || []).filter(item => !existingTitles.has(item.title));
-        AI_NEWS_DATA.trends = [...AI_NEWS_DATA.trends, ...newItems];
+        AI_NEWS_DATA[currentTopic].trends = [...AI_NEWS_DATA[currentTopic].trends, ...newItems];
         renderTrends(false, 'all', false, true); // Append render
     } else {
-        AI_NEWS_DATA = data;
+        AI_NEWS_DATA[currentTopic] = data;
         renderHero(false, data.hero);
         renderTrends(false, 'all');
     }
 
     // Update live status text to show source
     if (statusText) {
-        if (source.includes('Cache') || source.includes('KV')) {
-            statusText.innerHTML = `数据源: <span style="color: #4cd964">● 容器缓存 (Redis)</span>`;
+        if (source.includes('Cache') || source.includes('KV') || source.includes('Cloud')) {
+            statusText.innerHTML = `数据源: <span style="color: #4cd964">● 云端高速缓存 (Redis)</span>`;
         } else if (source.includes('Discovery') || source.includes('Kimi')) {
             statusText.innerHTML = `数据源: <span style="color: #ffcc00">● AI 实时全网发现</span>`;
         } else {
@@ -492,12 +518,28 @@ function updateWidgetData(data, source = 'AI-Discovery', isAppend = false) {
 }
 
 function closeModal() {
+    console.log('🔔 closeModal triggered');
     const modal = document.getElementById('detail-modal');
+    if (!modal) return;
+    
     modal.classList.remove('active');
+    
+    // Safety: Reset body scroll locking if we added it (future proof)
+    document.body.style.overflow = '';
+    
+    // Clean up content after transition
     setTimeout(() => {
-        modal.style.display = 'none';
-    }, 300);
+        // Double check if still not active after transition
+        if (!modal.classList.contains('active')) {
+            const modalBody = document.getElementById('modal-body');
+            if (modalBody) modalBody.innerHTML = '';
+            modal.scrollTop = 0; 
+            console.log('✅ Modal cleanup complete');
+        }
+    }, 450);
 }
+// Export to global scope for inline onclick support
+window.closeModal = closeModal;
 
 // UI Overhaul Helpers
 function startLiveClock() {
@@ -540,22 +582,21 @@ async function loadMoreNews() {
     isFetchingMore = false;
 }
 
-// Real-time clock update
+
+// Live Clock Update Logic
 function updateClock() {
     const now = new Date();
     const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
     const timeString = now.toLocaleTimeString('zh-CN', options);
-    const dateString = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
     
-    const clockElement = document.getElementById('real-time-clock');
-    if (clockElement) {
-        clockElement.textContent = `${dateString} ${timeString}`;
-    }
+    // Both header and specialized clock elements
+    ['current-date', 'real-time-clock'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = timeString;
+    });
 }
-
-// Initial call and set interval for clock
 setInterval(updateClock, 1000);
-updateClock(); // Call immediately to avoid delay
+updateClock();
 
 // Intersection Observer for scroll animations
 function animateOnScroll() {

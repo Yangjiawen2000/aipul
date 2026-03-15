@@ -17,44 +17,71 @@ const tools = [
 export default async function handler(req, res) {
     if (req.method === 'HEAD') return res.status(200).end();
 
-    const forceRefresh = req.query.force === 'true' || req.headers['x-vercel-cron'] === '1';
+    const topic = req.query.topic || 'general';
+    const seed = req.query.seed || 'none';
+    const isCron = req.headers['x-vercel-cron'] === '1';
+    const forceRefresh = req.query.force === 'true' || isCron;
 
-    // 4. Agentic Interaction with Kimi
-    // NOTE: Kimi k2.5 can be slow. Vercel Hobby has a 10s limit. 
-    // We use a highly aggressive prompt to try and stay under the limit.
-    const apiKey = process.env.KIMI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: "Missing API Key" });
+    // --- CRON WARMING LOGIC ---
+    if (isCron) {
+        console.log('[API/CRON] Starting Triple-Topic Cache Warming...');
+        const topics = ['general', 'biomed', 'tools'];
+        const results = await Promise.allSettled(topics.map(t => performAiDiscovery(t, 'cron-warm', apiKey)));
+        
+        let report = {};
+        for (let i = 0; i < topics.length; i++) {
+            const t = topics[i];
+            const res = results[i];
+            if (res.status === 'fulfilled') {
+                await kv.set(`ai_pulse_news_v2_${t}`, res.value, { ex: 86400 });
+                report[t] = 'Warmed';
+            } else {
+                report[t] = `Error: ${res.reason.message}`;
+            }
+        }
+        return res.status(200).json({ status: "Cron Complete", report });
+    }
 
-    console.log('[API/NEWS] Starting Kimi Request...');
-
-    const CACHE_KEY = 'ai_pulse_news_v2';
+    const CACHE_KEY = `ai_pulse_news_v2_${topic}`;
     
-    // 5. Try Cache First (Unless Forced)
+    // --- CLOUD-FIRST CACHE HIT ---
     try {
         if (!forceRefresh) {
             const cached = await kv.get(CACHE_KEY);
             if (cached) {
-                console.log('[API/NEWS] Serving from Cloud Cache');
+                console.log(`[API/NEWS] Serving Topic [${topic}] from Cloud Cache`);
                 res.setHeader('x-data-source', 'Vercel-KV-Cache');
-                res.setHeader('x-debug-cache', 'HIT');
                 return res.status(200).json(cached);
-            } else {
-                res.setHeader('x-debug-cache', 'MISS-EMPTY');
             }
-        } else {
-            res.setHeader('x-debug-cache', 'BYPASS-FORCE');
         }
     } catch (cacheErr) {
-        console.warn('[API/NEWS] Cache Read Error:', cacheErr.message);
-        res.setHeader('x-debug-cache', `ERROR-${cacheErr.message.slice(0, 20)}`);
+        console.warn(`[API/NEWS] Cache Read Error for [${topic}]:`, cacheErr.message);
     }
 
+    // --- REAL-TIME DISCOVERY FALLBACK ---
+    try {
+        console.log(`[API/NEWS] Performing Real-time Discovery for Topic [${topic}]...`);
+        const freshData = await performAiDiscovery(topic, seed, apiKey);
+        
+        // Update cache in background
+        kv.set(CACHE_KEY, freshData, { ex: 86400 }).catch(e => console.error('Cache Write Error:', e));
+        
+        res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
+        return res.status(200).json(freshData);
+    } catch (error) {
+        console.error('API Error:', error);
+        return res.status(500).json({ error: "Discovery Failed", message: error.message });
+    }
+}
+
+/**
+ * Core AI Discovery Logic
+ */
+async function performAiDiscovery(topic, seed, apiKey) {
     const now = new Date();
     const dateRef = now.toLocaleDateString('zh-CN');
-    const seed = req.query.seed || 'none';
-    const topic = req.query.topic || 'general';
 
-    let topicInstruction = "深度搜索全球AI动态，覆盖大模型、硬件、政策等全领域。";
+    let topicInstruction = "深度搜索全球AI动态，包含大模型、硬件、政策等全领域。";
     if (topic === 'biomed') {
         topicInstruction = "专项搜索【AI在生物医学/生命科学】领域的最新进展。必须包含：最新的科研论文(Nature/Science等)、蛋白质结构预测、新药研发突破、AI医疗影像或临床新发现。";
     } else if (topic === 'tools') {
@@ -63,8 +90,14 @@ export default async function handler(req, res) {
 
     const systemPrompt = `顶级AI主理人。今天是 ${dateRef}。
     任务：${topicInstruction}
-    时间范围：【最近3天内】的动态。严禁过往旧闻。
-    当前搜索种子：${seed} (若非none，请发掘该主题下的更多细分动态)。
+    时效：必须是【最近3天内】的动态。
+    【严控高质量来源】：
+    - 全球顶级媒体：TechCrunch, Wired, The Verge, MIT Technology Review, IEEE Spectrum.
+    - 科研/论文：Nature, Science, arXiv, NeurIPS/ICLR 最新收录.
+    - 官方动态：OpenAI Blog, Claude/Anthropic News, Google DeepMind, NVIDIA Blog, Meta AI.
+    - 医疗专项：PubMed, Cell, The Lancet.
+    严禁任何聚合类、低质量博客或过时信息。
+    
     仅输出JSON：
     {
       "hero": { "title": "...", "summary": "...", "category": "...", "url": "...", "time": "..." },
@@ -72,166 +105,95 @@ export default async function handler(req, res) {
         { "title": "...", "summary": "...", "category": "...", "impact": "重要/核心/重大/中等", "priority": 95, "url": "...", "time": "..." }
       ]
     }
-    精选 6 条。必须全部使用中文。不要任何前言。`;
+    精选 6 条。必须中文，不要前言。`;
 
     let messages = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `针对主题 [${topic}]，搜索并整理最近3天内的 6 条独特全球 AI 动态。必须中文且严控时间。 (ID:${Date.now()})` }
+        { role: "user", content: `针对主题 [${topic}]，从顶级信源搜寻并整理最近3天内的 6 条独特全球 AI 动态。必须中文且严控时间。 (ID:${Date.now()})` }
     ];
 
-    try {
-        // Step 1: Request Kimi to decide if a tool is needed
-        let response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+    // Step 1: Agentic Search
+    let response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: "kimi-k2.5",
+            messages: messages,
+            tools: tools,
+            tool_choice: "auto"
+        })
+    });
+
+    let result = await response.json();
+    if (!response.ok) throw new Error(`Kimi Step 1 Failed: ${JSON.stringify(result)}`);
+
+    let message = result.choices[0].message;
+
+    // Step 2: Synthesis (if search was performed)
+    if (message.tool_calls) {
+        messages.push({
+            role: "assistant",
+            content: message.content || null,
+            reasoning_content: message.reasoning_content || undefined,
+            tool_calls: message.tool_calls
+        });
+
+        for (const toolCall of message.tool_calls) {
+            if (toolCall.function.name === "$web_search") {
+                messages.push({
+                    role: "tool",
+                    tool_call_id: toolCall.id,
+                    name: "$web_search",
+                    content: toolCall.function.arguments
+                });
+            }
+        }
+
+        messages.push({ role: "user", content: "Final JSON (hero+6 trends). Real details. Sort by heat." });
+
+        response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "kimi-k2.5",
+                model: "moonshot-v1-32k",
                 messages: messages,
-                tools: tools,
-                tool_choice: "auto",
-                thinking: { enabled: false }
-            }),
-            cache: 'no-store'
+                temperature: 0,
+                response_format: { type: "json_object" }
+            })
         });
-
-        let result = await response.json();
-
-        if (!response.ok) {
-            console.error('Kimi API Step 1 Error:', result);
-            return res.status(response.status).json({ error: "Moonshot API Step 1 Failed", details: result });
-        }
-
-        let message = result.choices[0].message;
-
-        // Step 2: Handle Native Tool Calls (Multi-turn Agent)
-        if (message.tool_calls) {
-            // CRITICAL: Preserve reasoning_content and tool_calls for k2.5 stability
-            // We map the message exactly as returned by the model to maintain the thinking state.
-            const assistantMessage = {
-                role: "assistant",
-                content: message.content || null,
-                reasoning_content: message.reasoning_content || undefined,
-                tool_calls: message.tool_calls.map(tc => ({
-                    id: tc.id,
-                    type: tc.type || "builtin_function",
-                    function: tc.function
-                }))
-            };
-            messages.push(assistantMessage);
-
-            for (const toolCall of message.tool_calls) {
-                if (toolCall.function.name === "$web_search") {
-                    // For builtin $web_search, content must be the original arguments string
-                    messages.push({
-                        role: "tool",
-                        tool_call_id: toolCall.id,
-                        name: "$web_search",
-                        content: toolCall.function.arguments
-                    });
-                }
-            }
-
-            // Minimalist synthesis instruction
-            messages.push({
-                role: "user", 
-                content: "Final JSON (hero+4 trends). Real details. Sort by heat."
-            });
-
-            // Step 3: Get final synthesis using JSON Mode
-            response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "moonshot-v1-32k",
-                    messages: messages,
-                    temperature: 0,
-                    response_format: { type: "json_object" }
-                }),
-                cache: 'no-store'
-            });
-            result = await response.json();
-
-            if (!response.ok) {
-                console.error('Kimi API Step 3 Error:', result);
-                return res.status(response.status).json({ error: "Moonshot API Step 3 Failed", details: result });
-            }
-        }
-
-        const finalContent = result.choices[0].message.content;
-        const jsonMatch = finalContent.match(/\{[\s\S]*\}/);
-
-        if (jsonMatch) {
-            let freshData = JSON.parse(jsonMatch[0]);
-
-            // Heuristic Normalization: Find the main array regardless of key name
-            if (!freshData.trends || !Array.isArray(freshData.trends)) {
-                console.warn('Backend Normalization: Heuristically searching for content array.');
-                const arrays = Object.values(freshData).filter(val => Array.isArray(val) && val.length > 0);
-                // Sort by "looks like object array"
-                const objectArray = arrays.find(arr => typeof arr[0] === 'object');
-                freshData.trends = objectArray || arrays[0] || [];
-            }
-
-            // Defensive Item Normalization
-            freshData.trends = freshData.trends.map((item, idx) => {
-                // If the item is just a string, treat it as the title
-                if (typeof item === 'string') {
-                    return {
-                        title: item,
-                        summary: "实时动态：AI 行业发生重大突破，详情请查看最新行业快报。",
-                        category: "大模型",
-                        impact: "重要",
-                        priority: 90 - idx * 2,
-                        url: "#",
-                        time: "Just Now"
-                    };
-                }
-                const base = (typeof item === 'object' && item !== null) ? item : {};
-                return {
-                    title: base.title || base.news_title || `AI Pulse Update #${idx + 1}`,
-                    summary: base.summary || base.description || base.content || "详细内容请查看原文。",
-                    category: base.category || "其他",
-                    impact: base.impact || "中等",
-                    priority: base.priority || 70,
-                    url: base.url || base.link || "#",
-                    time: base.time || "Just Now"
-                };
-            });
-
-            if (!freshData.hero) {
-                console.warn('Backend Normalization: Repairing missing hero object.');
-                freshData.hero = freshData.trends[0] || { title: "AI Pulse 2026", summary: "极智先锋，领航未来。", category: "智驾", time: "Just Now", url: "#" };
-            }
-
-            // Ensure we have at least some trends
-            if (freshData.trends.length === 0) {
-                freshData.trends.push({ ...freshData.hero, id: 'manual-1' });
-            }
-
-            res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
-            
-            // 6. Async Update Cache
-            try {
-                await kv.set(CACHE_KEY, freshData, { ex: 86400 }); // Cache for 24 hours
-                console.log('[API/NEWS] Cloud Cache Updated');
-                res.setHeader('x-debug-cache-update', 'SUCCESS');
-            } catch (cacheErr) {
-                console.warn('[API/NEWS] Cache Write Error:', cacheErr.message);
-                res.setHeader('x-debug-cache-update', `FAILED-${cacheErr.message.slice(0, 20)}`);
-            }
-
-            return res.status(200).json(freshData);
-        }
-        throw new Error("Invalid Agent Output");
-
-    } catch (error) {
-        console.error('Agentic Proxy Error:', error);
-        return res.status(500).json({ error: "Agentic Loop Failed", message: error.message });
+        result = await response.json();
+        if (!response.ok) throw new Error(`Kimi Step 3 Failed: ${JSON.stringify(result)}`);
     }
+
+    const finalContent = result.choices[0].message.content;
+    const jsonMatch = finalContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in AI response");
+
+    let freshData = JSON.parse(jsonMatch[0]);
+
+    // Normalization
+    if (!freshData.trends || !Array.isArray(freshData.trends)) {
+        const arrays = Object.values(freshData).filter(val => Array.isArray(val));
+        freshData.trends = (arrays.find(arr => typeof arr[0] === 'object') || arrays[0] || []).slice(0, 6);
+    }
+    
+    freshData.trends = freshData.trends.map((item, idx) => ({
+        title: item.title || "AI Pulse Update",
+        summary: item.summary || "详细内容请查看原文。",
+        category: item.category || "其他",
+        impact: item.impact || "中等",
+        priority: item.priority || 70,
+        url: item.url || "#",
+        time: item.time || "Just Now"
+    }));
+
+    if (!freshData.hero) freshData.hero = freshData.trends[0];
+    
+    return freshData;
 }
