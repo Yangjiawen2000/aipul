@@ -56,9 +56,11 @@ Vercel 是目前托管前端网页最流行且最简单的平台。
    - 点击 **"Create Database"**。
    - 名称设为 `ai-pulse-kv`，地区选离你近的（如 Hong Kong）。
    - 选择 **"Free Tier"**。
-3. **获取密钥**：
-   - 在数据库详情页找到 **"REST API"** 部分。
-   - 复制 `UPSTASH_REDIS_REST_URL` 和 `UPSTASH_REDIS_REST_TOKEN` 的值。
+3. **获取密钥 (复制 URL 和 Token)**：
+   - 在数据库详情页向下滚动，找到 **"REST API"** 这一栏。
+   - 你会看到两个关键信息：
+     - **URL**: 对应变量 `UPSTASH_REDIS_REST_URL`
+     - **Token**: 对应变量 `UPSTASH_REDIS_REST_TOKEN` (请复制那个长字符串)
 4. **填入 Vercel**：
    - 进入 Vercel 控制台 -> **Settings** -> **Environment Variables**。
    - 分别添加这两个变量名及对应的值。
