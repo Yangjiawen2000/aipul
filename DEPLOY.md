@@ -46,8 +46,26 @@ Vercel 是目前托管前端网页最流行且最简单的平台。
 4. **一键部署**：
    - 无需配置 Framework Preset（选择 Other 即可）。
    - 点击 **Deploy**。
-5. **访问**：
-   - 部署完成后，该网址即可公开访问，且由你的 Key 提供动力。
+## 第三步：配置数据库 (最稳定方案：直连 Upstash)
+
+如果 Vercel 的 Marketplace 里找不到 KV 或 Upstash，直接去官网创建一个即可。这是最稳妥的方法。
+
+1. **创建 Upstash 账户**：
+   - 访问 [Upstash 官网](https://upstash.com/) 并使用 GitHub 登录。
+2. **创建 Redis 数据库**：
+   - 点击 **"Create Database"**。
+   - 名称设为 `ai-pulse-kv`，地区选离你近的（如 Hong Kong）。
+   - 选择 **"Free Tier"**。
+3. **获取密钥**：
+   - 在数据库详情页找到 **"REST API"** 部分。
+   - 复制 `UPSTASH_REDIS_REST_URL` 和 `UPSTASH_REDIS_REST_TOKEN` 的值。
+4. **填入 Vercel**：
+   - 进入 Vercel 控制台 -> **Settings** -> **Environment Variables**。
+   - 分别添加这两个变量名及对应的值。
+5. **重新部署**：
+   - 回到 **"Deployments"**，点击最近一次部署的三个点 `...` -> **"Redeploy"**。
+6. **成功验证**：
+   - 刷新网页，顶部显示 **“☁️ 云端同步”** 且资讯加载变为秒开，即表示绑定成功。
 
 ## 方案 B: GitHub Pages (免费且经典)
 

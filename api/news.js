@@ -83,7 +83,8 @@ export default async function handler(req, res) {
     }
 
     const CACHE_KEY = `ai_pulse_news_v2_${topic}`;
-    const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+    const hasKV = (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) || 
+                  (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
     
     // --- CLOUD-FIRST CACHE HIT (OPTIONAL) ---
     try {
