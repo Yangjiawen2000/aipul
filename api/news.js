@@ -146,7 +146,7 @@ async function performAiDiscovery(topic, seed, apiKey) {
         { role: "user", content: `针对主题 [${topic}]，从顶级信源搜寻并整理最近3天内的 6 条独特全球 AI 动态。必须中文且严控时间。 (ID:${Date.now()})` }
     ];
 
-    // Step 1: Agentic Search
+    // Step 1: Agentic Search - Using recommended turbo model for speed
     let response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -154,10 +154,11 @@ async function performAiDiscovery(topic, seed, apiKey) {
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            model: "kimi-k2.5",
+            model: "kimi-k2-turbo-preview",
             messages: messages,
             tools: tools,
-            tool_choice: "auto"
+            tool_choice: "auto",
+            temperature: 0.3
         })
     });
 
@@ -186,7 +187,7 @@ async function performAiDiscovery(topic, seed, apiKey) {
             }
         }
 
-        messages.push({ role: "user", content: "Final JSON (hero+6 trends). Real details. Sort by heat." });
+        messages.push({ role: "user", content: "请根据上述搜索结果，严格按照要求格式输出 6 条突发动态 JSON。必须包含真实的 URL 和详细摘要。" });
 
         response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
             method: 'POST',
@@ -195,14 +196,18 @@ async function performAiDiscovery(topic, seed, apiKey) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "moonshot-v1-32k",
+                model: "kimi-k2-turbo-preview", // Keep model consistent
                 messages: messages,
                 temperature: 0,
+                tools: tools, // Keep tools available
                 response_format: { type: "json_object" }
             })
         });
         result = await response.json();
-        if (!response.ok) throw new Error(`Kimi Step 3 Failed: ${JSON.stringify(result)}`);
+        if (!response.ok) throw new Error(`Kimi Synthesis Failed: ${JSON.stringify(result)}`);
+    } else {
+        // If no tool calls, it might have answered directly
+        console.warn('[API/NEWS] Kimi answered without search. Proceeding to parse.');
     }
 
     const finalContent = result.choices[0].message.content;
