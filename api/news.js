@@ -75,8 +75,12 @@ export default async function handler(req, res) {
         res.setHeader('x-data-source', 'Kimi-Agentic-Discovery');
         return res.status(200).json(freshData);
     } catch (error) {
-        console.error('API Error:', error);
-        return res.status(500).json({ error: "Discovery Failed", message: error.message });
+        console.error('API Error:', error.message, error.stack);
+        return res.status(500).json({ 
+            error: "Discovery Failed", 
+            message: error.message,
+            tip: "If this persists, check Vercel logs or verify KIMI_API_KEY validity."
+        });
     }
 }
 
